@@ -2,8 +2,9 @@ import torch
 from torch import nn
 from torchvision import models, transforms
 from PIL import Image
+path = "/home/ns3/ns-allinone-3.40/ns-3.40/contrib/ai/examples/a-plus-b/use-msg-stru/env_init"
 net = models.resnet50()
-net.load_state_dict(torch.load("./resnet50-19c8e357.pth"))
+net.load_state_dict(torch.load(path+"/resnet50-19c8e357.pth"))
 class WeatherModel(nn.Module):
     def __init__(self, net):
         super(WeatherModel, self).__init__()
@@ -44,7 +45,7 @@ def predict(imagePath):
     image = image.resize(Common.imageSize)
     # image.show()
     # 3. 加载模型
-    model = torch.load('weather_rec.pth')
+    model = torch.load(path + '/weather_rec.pth')
     model = model.to(Common.device)
     # 4. 转为tensor张量
     transform = transforms.ToTensor()

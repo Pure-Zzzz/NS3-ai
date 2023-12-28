@@ -31,9 +31,15 @@ import pandas as pd
 import numpy as np
 import random
 from channel_power.train import MyRLEnvironment
+from env_init import env_init
+
+env_init.run()
+
 exp = Experiment("ns3ai_apb_msg_stru", "../../../../../", py_binding,
                  handleFinish=True)
 msgInterface = exp.run(show_output=True)
+
+
 # 导入agent，预训练1000个epoch
 nb_episode = 1000
 my_rl_env = MyRLEnvironment(nb_episode=nb_episode)

@@ -332,12 +332,14 @@ main()
             interface->SetHandleFinish(true);
             Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>* msgInterface =
                 interface->GetInterface<EnvStruct, ActStruct>();
+
             msgInterface->CppSendBegin();
             msgInterface->GetCpp2PyStruct()->current_channel = current_channel;
             msgInterface->GetCpp2PyStruct()->current_power = static_cast<u_int32_t>(power[pw_index].Get());
             msgInterface->GetCpp2PyStruct()->current_disturbed_channel = current_disturb_channel;
             msgInterface->GetCpp2PyStruct()->current_snr = SNR;
             msgInterface->CppSendEnd();
+            
             msgInterface->CppRecvBegin();
             next_channel = msgInterface->GetPy2CppStruct()->next_channel;
             next_power = msgInterface->GetPy2CppStruct()->next_power;

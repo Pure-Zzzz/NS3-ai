@@ -1,3 +1,3 @@
-from split_out import process
-if __name__=='__main__':
+from .split_out import process
+def run():
     process()

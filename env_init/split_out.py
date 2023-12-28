@@ -9,14 +9,15 @@ from torch import nn
 import torchvision.models as models
 import torchvision.transforms as transforms
 from PIL import Image
-from weather_pred import predict
-from file_parser import parse_file
+from .weather_pred import predict
+from .file_parser import parse_file
 import numpy as np
-from unet import Unet
+from .unet import Unet
 x_transforms = transforms.Compose([
     transforms.ToTensor(),  # -> [0,1]
     transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
     ])
+path = "/home/ns3/ns-allinone-3.40/ns-3.40/contrib/ai/examples/a-plus-b/use-msg-stru/env_init/"
 def test_single_image(model, image_path, transform):
     model.eval()
     
@@ -38,20 +39,20 @@ def test_single_image(model, image_path, transform):
 def process():
     # 用于测试单个图像的示例用法
     model = Unet(3, 6)
-    weight = 'weights_epoch293_loss0.546.pth'
+    weight = path + 'weights_epoch293_loss0.546.pth'
     # weight = 'weights_epoch265_loss0.608.pth'
     # weight = 'best_weights_epoch147_loss0.848.pth'
     model.load_state_dict(torch.load(weight, map_location='cpu'))
 
     transform = x_transforms  # 使用与数据集相同的变换
 
-    gray_img = test_single_image(model, '20231206-123436265.png', transform)
+    gray_img = test_single_image(model, path + '20231206-123436265.png', transform)
     print("--------------完成地形分割------------------")
     
     matches = parse_file()
     id_weather_dict = {}
     # 主文件夹路径
-    weather_images_folder = './all'
+    weather_images_folder = path + 'all'
 
     # ID列表
     id_list = []
@@ -61,7 +62,7 @@ def process():
     # 遍历每个ID
     for user_id in id_list:
         # 创建以ID命名的文件夹
-        user_folder = f'./weather_split/{user_id}'
+        user_folder = path + f'weather_split/{user_id}'
         os.makedirs(user_folder, exist_ok=True)
 
         # 随机选择一个天气文件夹
