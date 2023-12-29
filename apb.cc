@@ -30,10 +30,12 @@
 #include <iomanip>
 #include "apb.h"
 #include <ns3/ai-module.h>
+#include <thread>
 using namespace ns3;
 using namespace std;
 
-
+uint32_t txPower = 0;
+Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>* msgInterface;
 // 创建一个新的类，该类继承自 Object
 class ComplexData : public Object {
 public:
@@ -81,6 +83,7 @@ ofstream file("result.txt");
 
 
 static map<Ipv4Address, string> ipToIdMap;
+static map<string, uint32_t> modelidToId;
 static map<string, string> idToNameMap;
 static map<string, string> idToGroupMap;
 static map<string, string> nameToIdMap;
@@ -780,6 +783,7 @@ void ReceivePacket (std::string context, Ptr<const Packet> packet, const Address
         // 打印信息
         InetSocketAddress addr = InetSocketAddress::ConvertFrom (from);
         if(addr.GetIpv4 ()!=localAddr){
+            cout << "------------------------------------------------------This is data translate!------------------------------------------------------------" <<endl;
             //DataInfoFile(FindFromMap(ipToIdMap[addr.GetIpv4 ()]), node, packet->GetSize(), timestamp, ref(dataputFile));
             DataInfoFile(FindFromMap(ipToIdMap[addr.GetIpv4()]), node, packet->GetSize(), timestamp, mediaTypeString, ref(dataputFile));
         }
@@ -804,6 +808,12 @@ void StartSpecificTransmission(uint32_t sourceIndex, uint32_t targetIndex, NodeC
     tempApp.Stop(Seconds(Simulator::Now().GetSeconds() + duration.GetSeconds())); // 持续时间后停止
 }
 
+void SetTxPower(Ptr<Node> node, double txPower) {
+    Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0)); // 假设wifi设备是第一个设备
+    Ptr<YansWifiPhy> phy = DynamicCast<YansWifiPhy>(wifiDevice->GetPhy());
+    phy->SetTxPowerStart(txPower);
+    phy->SetTxPowerEnd(txPower);
+}
 
 void MonitorSnifferRx (Ptr<Node> node, Ptr<const Packet> packet, uint16_t channelFreqMhz, WifiTxVector txVector, 
                         MpduInfo mpduInfo, SignalNoiseDbm signalNoise, uint16_t frequency) {
@@ -817,7 +827,6 @@ void MonitorSnifferRx (Ptr<Node> node, Ptr<const Packet> packet, uint16_t channe
     temp.status = 1;
     temp.snr = snr;
     temp.mcs = txVector.GetMode();
-    
     //给用户活跃度文件添加数据的结构体
     datatemp.timestamp = chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()).count();
     datatemp.frequency = channelFreqMhz;
@@ -825,7 +834,35 @@ void MonitorSnifferRx (Ptr<Node> node, Ptr<const Packet> packet, uint16_t channe
     datatemp.status = 1;
     datatemp.snr = snr;
     datatemp.mcs = txVector.GetMode();
-    // Simulator::Schedule(Seconds(0.0),&LogJsonPosition,tempNodes,ref(outputFile));
+    
+    string modelId = FindIdFromMap(node);
+    uint32_t id = modelidToId[modelId];
+    if(snr < 16){
+        cout << "SNR: " << snr << endl;
+        msgInterface->CppSendBegin();
+        std::cout << "第一次开始cppsend" << std::endl;
+        msgInterface->GetCpp2PyStruct()->id = id;
+        std::cout << "修改id" << id << std::endl;
+        msgInterface->CppSendEnd();
+        std::cout << "第一次结束cppsend" << std::endl;
+
+
+        // std::this_thread::sleep_for(std::chrono::seconds(2));
+
+
+        std::cout << " 正在调用python执行优化策略 " << std::endl;
+        msgInterface->CppRecvBegin();
+        std::cout << " 开始cppRecv " << std::endl;
+        // next_channel = msgInterface->GetPy2CppStruct()->next_channel;
+        txPower = msgInterface->GetPy2CppStruct()->next_power;
+        std::cout << " 收到改变的power为： "<< txPower << std::endl;
+        msgInterface->CppRecvEnd();
+        std::cout << " 结束cppRecv " << std::endl;
+        SetTxPower(node, txPower);
+
+    }
+
+
     Simulator::Schedule(Seconds(0.0),&dataActiviatyInfoFile,tempNodes,ref(dataActiviaty));
 }
 
@@ -842,15 +879,15 @@ void PrintRoutingTable(std::string filePath, Time printInterval) {
 
 int main (int argc, char *argv[])
 {
-    CommandLine cmd;
-    cmd.Parse(argc, argv);
     //创建interface实例
     auto interface = Ns3AiMsgInterface::Get();
     interface->SetIsMemoryCreator(false);
     interface->SetUseVector(false);
     interface->SetHandleFinish(true);
-    Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>* msgInterface =
-        interface->GetInterface<EnvStruct, ActStruct>();
+    msgInterface = interface->GetInterface<EnvStruct, ActStruct>();
+    CommandLine cmd;
+    cmd.Parse(argc, argv);
+
     //读取节点位置信息
     vector<Data> data = readData("/home/ns3/ns-allinone-3.40/ns-3.40/contrib/ai/examples/a-plus-b/use-msg-stru/red_position.txt");
 
@@ -927,6 +964,15 @@ int main (int argc, char *argv[])
     // 在初次延迟后开始打印路由表
     Simulator::Schedule(printInterval, &PrintRoutingTable, filePath, printInterval);
 */
+
+    for (uint16_t i = 0; i < nodes.GetN(); i++){
+        string modelId = FindIdFromMap(nodes.Get(i));
+        size_t hyphenPos = modelId.find('-');
+        string afterHyphen = modelId.substr(hyphenPos + 1);
+        int id = stoi(afterHyphen);
+        modelidToId[modelId] = id;
+    }
+    
 
     // 设置Packet Sink应用并连接回调
     uint16_t port = 9; // UDP端口

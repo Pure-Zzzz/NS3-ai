@@ -135,7 +135,7 @@ main()
         
         msgInterface->CppSendBegin();
         std::cout << "第一次开始cppsend" << std::endl;
-        msgInterface->GetCpp2PyStruct()->envtmp1;
+        msgInterface->GetCpp2PyStruct()->id;
         msgInterface->GetCpp2PyStruct()->envtmp2;
         msgInterface->GetCpp2PyStruct()->envtmp3;
         msgInterface->GetCpp2PyStruct()->envtmp4;
@@ -316,12 +316,12 @@ main()
             msgInterface->CppSendEnd();
             std::cout << "第二次结束cppsend" << std::endl;
             
-            // msgInterface->CppRecvBegin();
-            // std::cout << " 开始cppRecv " << std::endl;
-            // next_channel = msgInterface->GetPy2CppStruct()->next_channel;
-            // next_power = msgInterface->GetPy2CppStruct()->next_power;
-            // msgInterface->CppRecvEnd();
-            // std::cout << " 结束cppRecv " << std::endl;
+            msgInterface->CppRecvBegin();
+            std::cout << " 开始cppRecv " << std::endl;
+            next_channel = msgInterface->GetPy2CppStruct()->next_channel;
+            next_power = msgInterface->GetPy2CppStruct()->next_power;
+            msgInterface->CppRecvEnd();
+            std::cout << " 结束cppRecv " << std::endl;
 
             //-----------------------------------------------------------------------------
             if(next_power == 16){

@@ -37,7 +37,7 @@ PYBIND11_MODULE(ns3ai_apb_py_stru, m)
         .def_readwrite("envtmp4", &EnvStruct::envtmp4)
         .def_readwrite("envtmp3", &EnvStruct::envtmp3)
         .def_readwrite("envtmp2", &EnvStruct::envtmp2)
-        .def_readwrite("envtmp1", &EnvStruct::envtmp1)
+        .def_readwrite("id", &EnvStruct::id)
         .def_readwrite("cpp_action", &EnvStruct::cpp_action);
 
     py::class_<ActStruct>(m, "PyActStruct").def(py::init<>())

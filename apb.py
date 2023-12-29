@@ -42,34 +42,41 @@ msgInterface = exp.run(show_output=True)
 
 
 # 导入agent，预训练1000个epoch
-# nb_episode = 1000
-# my_rl_env = MyRLEnvironment(nb_episode=nb_episode)
-# my_rl_env.train()
-# agent = my_rl_env.get_agent_instance()
+nb_episode = 1000
+my_rl_env = MyRLEnvironment(nb_episode=nb_episode)
+my_rl_env.train()
+agent = my_rl_env.get_agent_instance()
 time.sleep(1)
+
 
 
 try:
     while True:
         # receive from C++ side
+        print('python开始接收')
         msgInterface.PyRecvBegin()
-        cpp_act = msgInterface.GetCpp2PyStruct().cpp_action
+        # cpp_act = msgInterface.GetCpp2PyStruct().cpp_action
         if msgInterface.PyGetFinished():
             break
-        if cpp_act == 0:
-            current_channel = msgInterface.GetCpp2PyStruct().current_channel 
-            current_power = msgInterface.GetCpp2PyStruct().current_power
-            current_power = msgInterface.GetCpp2PyStruct().current_disturbed_channel
-            current_power = msgInterface.GetCpp2PyStruct().current_snr
-            print("tmp1: {}".format(msgInterface.GetCpp2PyStruct().envtmp1))
-            print("tmp2: {}".format(msgInterface.GetCpp2PyStruct().envtmp2))
-            print("tmp3: {}".format(msgInterface.GetCpp2PyStruct().envtmp3))
-            print("tmp4: {}".format(msgInterface.GetCpp2PyStruct().envtmp4))
-            msgInterface.PyRecvEnd()
-            continue
-        else:
-            msgInterface.PyRecvEnd()
-            continue
+        id = msgInterface.GetCpp2PyStruct().id
+        print("id: {}".format(id))
+        print('python结束接受')
+        msgInterface.PyRecvEnd()
+        # continue
+        # if cpp_act == 0:
+        #     current_channel = msgInterface.GetCpp2PyStruct().current_channel 
+        #     current_power = msgInterface.GetCpp2PyStruct().current_power
+        #     current_power = msgInterface.GetCpp2PyStruct().current_disturbed_channel
+        #     current_power = msgInterface.GetCpp2PyStruct().current_snr
+        #     print("tmp1: {}".format(msgInterface.GetCpp2PyStruct().envtmp1))
+        #     print("tmp2: {}".format(msgInterface.GetCpp2PyStruct().envtmp2))
+        #     print("tmp3: {}".format(msgInterface.GetCpp2PyStruct().envtmp3))
+        #     print("tmp4: {}".format(msgInterface.GetCpp2PyStruct().envtmp4))
+        #     msgInterface.PyRecvEnd()
+        #     continue
+        # else:
+        #     msgInterface.PyRecvEnd()
+        #     continue
 
 
         action = agent.act()
