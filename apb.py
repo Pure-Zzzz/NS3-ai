@@ -84,7 +84,7 @@ try:
         # send to C++ side
         msgInterface.PySendBegin()
         msgInterface.GetPy2CppStruct().next_channel = action[0]
-        msgInterface.GetPy2CppStruct().next_power = action[1]
+        msgInterface.GetPy2CppStruct().next_power = random.choice([40,50,60])
         msgInterface.PySendEnd()
 
 except Exception as e:

@@ -903,8 +903,8 @@ int main (int argc, char *argv[])
     vector<DataRow> fileData = ReadCsvFile("/home/ns3/ns-allinone-3.40/ns-3.40/contrib/ai/examples/a-plus-b/use-msg-stru/red_info.txt");
 
     // 设置全局变量以使用实时模拟器和启用校验和
-    GlobalValue::Bind ("SimulatorImplementationType", StringValue ("ns3::RealtimeSimulatorImpl"));
-    GlobalValue::Bind ("ChecksumEnabled", BooleanValue (true));
+    // GlobalValue::Bind ("SimulatorImplementationType", StringValue ("ns3::RealtimeSimulatorImpl"));
+    // GlobalValue::Bind ("ChecksumEnabled", BooleanValue (true));
 
     //创建节点数量
     NodeContainer nodes = CreateNode(28);
