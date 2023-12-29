@@ -1,3 +1,4 @@
+```cpp
 /**
     * 创建干扰频谱
 */
@@ -21,7 +22,7 @@ for (int i = 0; i < 13; ++i) {
 }
 /**
     *随机干扰信道
-*
+*/
 if (i%13==0){
         std::random_device rd;
     // 使用 Mersenne Twister 引擎
@@ -36,7 +37,7 @@ if (i%13==0){
 }
 /**
     *产生干扰信息
-/
+*/
 Ptr<SpectrumValue> wgPsd =
             Create<SpectrumValue>(SpectrumModelMultiBand);
 *wgPsd = waveformPower / 20e6; // PSD spread across 20 MHz
