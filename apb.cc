@@ -109,50 +109,6 @@ main()
     double channelSpacing = 5e6;
     // 2.4GHz WiFi标准信道宽度
     double channelWidth = 20e6;
-
-    
-    uint32_t current_channel = 9;
-    // double current_channel_freq = 2452e6;
-    // if(current_channel_freq==2412e6){
-    //     current_channel = 1;
-    // }else 
-    // if(current_channel_freq==2417e6){
-    //     current_channel = 2;
-    // }else 
-    // if(current_channel_freq==2422e6){
-    //     current_channel = 3;
-    // }else 
-    // if(current_channel_freq==2427e6){
-    //     current_channel = 4;
-    // }else 
-    // if(current_channel_freq==2432e6){
-    //     current_channel = 5;
-    // }else 
-    // if(current_channel_freq==2437e6){
-    //     current_channel = 6;
-    // }else 
-    // if(current_channel_freq==2442e6){
-    //     current_channel = 7;
-    // }else 
-    // if(current_channel_freq==2447e6){
-    //     current_channel = 8;
-    // }else 
-    // if(current_channel_freq==2452e6){
-    //     current_channel = 9;
-    // }else 
-    // if(current_channel_freq==2457e6){
-    //     current_channel = 10;
-    // }else 
-    // if(current_channel_freq==2462e6){
-    //     current_channel = 11;
-    // }else 
-    // if(current_channel_freq==2467e6){
-    //     current_channel = 12;
-    // }else 
-    // if(current_channel_freq==2472e6){
-    //     current_channel = 13;
-    // }
-    // 添加13个信道
     for (int i = 0; i < 13; ++i) {
         Bands band;
         BandInfo bandInfo;
@@ -163,7 +119,7 @@ main()
         // 将每个 Band 添加到 allBands 中
         allBands.push_back(band);
     }
-
+    uint32_t current_channel = 9;
     DoubleValue power[] = {16,20,24};
     int pw_index = 1;
     //创建gym实例
@@ -359,12 +315,12 @@ main()
             msgInterface->CppSendEnd();
             std::cout << "第二次结束cppsend" << std::endl;
             
-            msgInterface->CppRecvBegin();
-            std::cout << " 开始cppRecv " << std::endl;
-            next_channel = msgInterface->GetPy2CppStruct()->next_channel;
-            next_power = msgInterface->GetPy2CppStruct()->next_power;
-            msgInterface->CppRecvEnd();
-            std::cout << " 结束cppRecv " << std::endl;
+            // msgInterface->CppRecvBegin();
+            // std::cout << " 开始cppRecv " << std::endl;
+            // next_channel = msgInterface->GetPy2CppStruct()->next_channel;
+            // next_power = msgInterface->GetPy2CppStruct()->next_power;
+            // msgInterface->CppRecvEnd();
+            // std::cout << " 结束cppRecv " << std::endl;
 
             //-----------------------------------------------------------------------------
             if(next_power == 16){

@@ -56,7 +56,7 @@ try:
         cpp_act = msgInterface.GetCpp2PyStruct().cpp_action
         if msgInterface.PyGetFinished():
             break
-        if cpp_act == 1:
+        if cpp_act == 0:
             current_channel = msgInterface.GetCpp2PyStruct().current_channel 
             current_power = msgInterface.GetCpp2PyStruct().current_power
             current_power = msgInterface.GetCpp2PyStruct().current_disturbed_channel
