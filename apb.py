@@ -30,10 +30,11 @@ from channel_power.single_matrix_game import MatrixGame
 import pandas as pd
 import numpy as np
 import random
+import time
 from channel_power.train import MyRLEnvironment
-from env_init import env_init
-
-env_init.run()
+#开启初始化
+# from env_init import env_init
+# env_init.run()
 
 exp = Experiment("ns3ai_apb_msg_stru", "../../../../../", py_binding,
                  handleFinish=True)
@@ -41,25 +42,34 @@ msgInterface = exp.run(show_output=True)
 
 
 # 导入agent，预训练1000个epoch
-nb_episode = 1000
-my_rl_env = MyRLEnvironment(nb_episode=nb_episode)
-my_rl_env.train()
-agent = my_rl_env.get_agent_instance()
-
+# nb_episode = 1000
+# my_rl_env = MyRLEnvironment(nb_episode=nb_episode)
+# my_rl_env.train()
+# agent = my_rl_env.get_agent_instance()
+time.sleep(1)
 
 
 try:
     while True:
         # receive from C++ side
         msgInterface.PyRecvBegin()
+        cpp_act = msgInterface.GetCpp2PyStruct().cpp_action
         if msgInterface.PyGetFinished():
             break
-        
-        current_channel = msgInterface.GetCpp2PyStruct().current_channel 
-        current_power = msgInterface.GetCpp2PyStruct().current_power
-        current_power = msgInterface.GetCpp2PyStruct().current_disturbed_channel
-        current_power = msgInterface.GetCpp2PyStruct().current_snr
-        msgInterface.PyRecvEnd()
+        if cpp_act == 1:
+            current_channel = msgInterface.GetCpp2PyStruct().current_channel 
+            current_power = msgInterface.GetCpp2PyStruct().current_power
+            current_power = msgInterface.GetCpp2PyStruct().current_disturbed_channel
+            current_power = msgInterface.GetCpp2PyStruct().current_snr
+            print("tmp1: {}".format(msgInterface.GetCpp2PyStruct().envtmp1))
+            print("tmp2: {}".format(msgInterface.GetCpp2PyStruct().envtmp2))
+            print("tmp3: {}".format(msgInterface.GetCpp2PyStruct().envtmp3))
+            print("tmp4: {}".format(msgInterface.GetCpp2PyStruct().envtmp4))
+            msgInterface.PyRecvEnd()
+            continue
+        else:
+            msgInterface.PyRecvEnd()
+            continue
 
 
         action = agent.act()

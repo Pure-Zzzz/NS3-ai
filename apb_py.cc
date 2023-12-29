@@ -33,11 +33,20 @@ PYBIND11_MODULE(ns3ai_apb_py_stru, m)
         .def_readwrite("current_channel", &EnvStruct::current_channel)
         .def_readwrite("current_power", &EnvStruct::current_power)
         .def_readwrite("current_disturbed_channel", &EnvStruct::current_disturbed_channel)
-        .def_readwrite("current_snr", &EnvStruct::current_snr);
+        .def_readwrite("current_snr", &EnvStruct::current_snr)
+        .def_readwrite("envtmp4", &EnvStruct::envtmp4)
+        .def_readwrite("envtmp3", &EnvStruct::envtmp3)
+        .def_readwrite("envtmp2", &EnvStruct::envtmp2)
+        .def_readwrite("envtmp1", &EnvStruct::envtmp1)
+        .def_readwrite("cpp_action", &EnvStruct::cpp_action);
 
     py::class_<ActStruct>(m, "PyActStruct").def(py::init<>())
         .def_readwrite("next_channel", &ActStruct::next_channel)
-        .def_readwrite("next_power", &ActStruct::next_power);
+        .def_readwrite("next_power", &ActStruct::next_power)
+        .def_readwrite("acttmp1", &ActStruct::acttmp1)
+        .def_readwrite("acttmp2", &ActStruct::acttmp2)
+        .def_readwrite("acttmp3", &ActStruct::acttmp3)
+        .def_readwrite("acttmp4", &ActStruct::acttmp4);
 
     py::class_<ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>>(m, "Ns3AiMsgInterfaceImpl")
         .def(py::init<bool,

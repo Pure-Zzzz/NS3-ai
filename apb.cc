@@ -61,6 +61,7 @@ double SNR = 0;
 uint32_t current_disturb_channel;
 uint32_t next_channel;
 uint32_t next_power;
+uint32_t action;
 /**
  * Monitor sniffer Rx trace
  *
@@ -166,9 +167,25 @@ main()
     DoubleValue power[] = {16,20,24};
     int pw_index = 1;
     //创建gym实例
-    
+    auto interface = Ns3AiMsgInterface::Get();
+    interface->SetIsMemoryCreator(false);
+    interface->SetUseVector(false);
+    interface->SetHandleFinish(true);
+    Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>* msgInterface =
+        interface->GetInterface<EnvStruct, ActStruct>();
     for (uint32_t i = 0; i < 1000; i++)
     {   
+        
+        msgInterface->CppSendBegin();
+        std::cout << "第一次开始cppsend" << std::endl;
+        msgInterface->GetCpp2PyStruct()->envtmp1;
+        msgInterface->GetCpp2PyStruct()->envtmp2;
+        msgInterface->GetCpp2PyStruct()->envtmp3;
+        msgInterface->GetCpp2PyStruct()->envtmp4;
+        msgInterface->GetCpp2PyStruct()->cpp_action = 1;
+        msgInterface->CppSendEnd();
+        std::cout << "第一次结束cppsend" << std::endl;
+
         std::cout << "当前通信信道: " << current_channel; 
         if (i%13==0){
              std::random_device rd;
@@ -326,24 +343,29 @@ main()
             std::cout << "当前信道受干扰，正在切换信道......." << std::endl;
 
             //创建传输通道------------------------------------------------------------------
-            auto interface = Ns3AiMsgInterface::Get();
-            interface->SetIsMemoryCreator(false);
-            interface->SetUseVector(false);
-            interface->SetHandleFinish(true);
-            Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>* msgInterface =
-                interface->GetInterface<EnvStruct, ActStruct>();
+            // auto interface = Ns3AiMsgInterface::Get();
+            // interface->SetIsMemoryCreator(false);
+            // interface->SetUseVector(false);
+            // interface->SetHandleFinish(true);
+            // Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>* msgInterface =
+            //     interface->GetInterface<EnvStruct, ActStruct>();
 
             msgInterface->CppSendBegin();
+            std::cout << "第二次开始cppsend" << std::endl;
             msgInterface->GetCpp2PyStruct()->current_channel = current_channel;
             msgInterface->GetCpp2PyStruct()->current_power = static_cast<u_int32_t>(power[pw_index].Get());
             msgInterface->GetCpp2PyStruct()->current_disturbed_channel = current_disturb_channel;
             msgInterface->GetCpp2PyStruct()->current_snr = SNR;
             msgInterface->CppSendEnd();
+            std::cout << "第二次结束cppsend" << std::endl;
             
             msgInterface->CppRecvBegin();
+            std::cout << " 开始cppRecv " << std::endl;
             next_channel = msgInterface->GetPy2CppStruct()->next_channel;
             next_power = msgInterface->GetPy2CppStruct()->next_power;
             msgInterface->CppRecvEnd();
+            std::cout << " 结束cppRecv " << std::endl;
+
             //-----------------------------------------------------------------------------
             if(next_power == 16){
                 pw_index = 0;
