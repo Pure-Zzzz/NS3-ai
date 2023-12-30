@@ -82,6 +82,14 @@ NS_LOG_COMPONENT_DEFINE ("PositionTacticalInternetExample");
 ofstream file("result.txt");
 
 
+NodeContainer nodes;
+
+static map<string, long long> sendTimes;//根据id找发送时间
+uint32_t packetId = 0;
+Time totalDelay = Seconds(0);
+double totalPacketsReceived = 0;
+double totalPacketsSent = 0;
+
 static map<Ipv4Address, string> ipToIdMap;
 static map<string, uint32_t> modelidToId;
 static map<string, string> idToNameMap;
@@ -419,7 +427,7 @@ void LogJsonPosition(NodeContainer Nodes, ofstream& outputFile)
 
         // 添加各种数据到 JSON 对象
         // outputFile << "\"Time\": \"" << Simulator::Now().GetSeconds() << "s\", ";
-        outputFile << "\"Timestamp\": \"" << timestamp << "s\", ";
+        outputFile << "\"Timestamp\": \"" << timestamp << "ms\", ";
         outputFile << "\"PkgType\": \"001\",";
         outputFile << "\"NodeId\": \"" << FindIdFromMap(Nodes.Get(i)) << "\", ";
         outputFile << "\"NodeActivity\": \"" << "1\", ";
@@ -609,8 +617,8 @@ void DataInfoFile(Ptr<Node> start, Ptr<Node> &target, uint32_t size,long long ti
         second = 0;
     }
     outputFile << "{";//开始第一个json对象
-    outputFile << "\"StartTimestamp\": \"" << "NULL\", ";
-    outputFile << "\"ArriveTimestamp\": \"" << time << "s\", ";
+    outputFile << "\"StartTimestamp\": \"" << sendTimes[FindIdFromMap(start)] << "ms\", ";
+    outputFile << "\"ArriveTimestamp\": \"" << time << "ms\", ";
     outputFile << "\"PkgType\": \"002\",";
     outputFile << "\"StartNodeid\": \"" << FindIdFromMap(start) << "\", ";
     outputFile << "\"StartNodeGroup\":\""<< FindFromGroupMap(FindIdFromMap(start)) <<"\",";
@@ -625,7 +633,7 @@ void DataInfoFile(Ptr<Node> start, Ptr<Node> &target, uint32_t size,long long ti
     outputFile << "\"MCS\": \"" << temp.mcs << "\",";
     outputFile << "\"PacketLossRate\": \"" << "NULL\",";
     outputFile << "\"Delay\": \"" << "NULL\",";
-    outputFile << "\"DataRate\": \"" << "NULL\"";
+    outputFile << "\"DataRate\": \"" << "50kbps\"";
     outputFile << "}";  // 结束 JSON 对象
     outputFile << "," <<endl;    
 }
@@ -658,7 +666,7 @@ void dataActiviatyInfoFile(NodeContainer Nodes, ofstream& outputFile){
 
             // 添加各种数据到 JSON 对象
             // outputFile << "\"Time\": \"" << Simulator::Now().GetSeconds() << "s\", ";
-            outputFile << "\"Timestamp\": \"" << datatemp.timestamp << "s\", ";
+            outputFile << "\"Timestamp\": \"" << datatemp.timestamp << "ms\", ";
             outputFile << "\"PkgType\": \"003\",";
             outputFile << "\"NodeId\": \"" << FindIdFromMap(node) << "\", ";
             outputFile << "\"NodeGroup\":\""<< FindFromGroupMap(FindIdFromMap(node)) <<"\",";
@@ -666,14 +674,8 @@ void dataActiviatyInfoFile(NodeContainer Nodes, ofstream& outputFile){
             outputFile << "\"NodeName\": \"" << foundName << "\", ";
             outputFile << "\"NodeSpeed\": \""  << "1m/s\", ";
             
-            if((foundName != "red_commandPostNodes.Get(0)") && (foundName != "blue_commandPostNodes.Get(0)"))
-            {
-                outputFile << "\"NodeTxPower\": \"" << NodePower(node) << "dBm\", ";
-            }
+            outputFile << "\"NodeTxPower\": \"" << NodePower(node) << "dBm\", ";
 
-            // outputFile << "\"Position\": {\"x\": " << pos.x << ", \"y\": " << pos.y << ", \"z\": " << pos.z << "}, ";
-            // XYZ2LLA((pos.x*100)-1210135.1685510000,(pos.y*100)+5045472.0347960000,(pos.z*100)+3700382.7212280000,X,Y,Z);//以第一个红色士兵节点为原点并且将坐标等比缩小了100倍
-            // XYZ2LLA((pos.x)-1210135.1685510000,(pos.y)+5045472.0347960000,(pos.z)+3700382.7212280000,X,Y,Z);//以第一个红色士兵节点为原点
             XYZ2LLA(pos.x*10,pos.y*10,pos.z*10,X,Y,Z);//直接采用原始未经处理的地理坐标转换的笛卡尔坐标系坐标
             outputFile << "\"Position\": {\"x\": "  << fixed << setprecision(6)<< X << ", \"y\": " << Y << ", \"z\": " << Z << "}, ";//输出地理坐标
             outputFile.unsetf(ios_base::fixed);
@@ -709,25 +711,15 @@ void dataActiviatyInfoFile(NodeContainer Nodes, ofstream& outputFile){
                     outputFile << "[" <<endl;
                 outputFile << "{";  // 开始一个 JSON 对象
 
-                // 添加各种数据到 JSON 对象
-                // outputFile << "\"Time\": \"" << Simulator::Now().GetSeconds() << "s\", ";
-                // outputFile << "\"Timestamp\": \"" << timestamp << "s\", ";
-                outputFile << "\"Timestamp\": \"" << timestamp << "s\", ";
+                outputFile << "\"Timestamp\": \"" << timestamp << "ms\", ";
                 outputFile << "\"PkgType\": \"003\",";
                 outputFile << "\"NodeId\": \"" << FindIdFromMap(Nodes.Get(i)) << "\", ";
                 outputFile << "\"NodeGroup\":\""<< FindFromGroupMap(FindIdFromMap(Nodes.Get(i))) <<"\",";
                 outputFile << "\"NodeType\": \"" << nameToTypeMap[foundName] << "\", ";
                 outputFile << "\"NodeName\": \"" << foundName << "\", ";
                 outputFile << "\"NodeSpeed\": \""  << "1m/s\", ";
-                
-                if((foundName != "red_commandPostNodes.Get(0)") && (foundName != "blue_commandPostNodes.Get(0)"))
-                {
-                    outputFile << "\"NodeTxPower\": \"" << NodePower(Nodes.Get(i)) << "dBm\", ";
-                }
+                outputFile << "\"NodeTxPower\": \"" << NodePower(Nodes.Get(i)) << "dBm\", ";
 
-                // outputFile << "\"Position\": {\"x\": " << pos.x << ", \"y\": " << pos.y << ", \"z\": " << pos.z << "}, ";
-                // XYZ2LLA((pos.x*100)-1210135.1685510000,(pos.y*100)+5045472.0347960000,(pos.z*100)+3700382.7212280000,X,Y,Z);//以第一个红色士兵节点为原点并且将坐标等比缩小了100倍
-                // XYZ2LLA((pos.x)-1210135.1685510000,(pos.y)+5045472.0347960000,(pos.z)+3700382.7212280000,X,Y,Z);//以第一个红色士兵节点为原点
                 XYZ2LLA(pos.x*10,pos.y*10,pos.z*10,X,Y,Z);//直接采用原始未经处理的地理坐标转换的笛卡尔坐标系坐标
                 outputFile << "\"Position\": {\"x\": "  << fixed << setprecision(6)<< X << ", \"y\": " << Y << ", \"z\": " << Z << "}, ";//输出地理坐标
                 outputFile.unsetf(ios_base::fixed);
@@ -802,6 +794,19 @@ void StartSpecificTransmission(uint32_t sourceIndex, uint32_t targetIndex, NodeC
     // onOffHelper.SetAttribute("DataRate", DataRateValue(DataRate("500kb/s")));
     onOffHelper.SetAttribute("DataRate", StringValue("50kb/s"));
     onOffHelper.SetAttribute("PacketSize", UintegerValue(1024));
+
+    string id = FindIdFromMap(sourceNode);
+    // 记录发送开始时间
+    auto now = chrono::system_clock::now();
+    long long initialTime = chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()).count();
+    if (sendTimes[id]==0){
+        for (uint16_t i = 0; i < nodes.GetN(); i++)
+        {
+            string id = FindIdFromMap(nodes.Get(i));
+            sendTimes[id] == 0;
+        }
+        sendTimes[id] = initialTime;
+    }
 
     ApplicationContainer tempApp = onOffHelper.Install(sourceNode);
     tempApp.Start(Seconds(Simulator::Now().GetSeconds())); // 立即开始
@@ -995,7 +1000,7 @@ int main (int argc, char *argv[])
     Time startTransmissionTime = Seconds(0.0);
     Time transmissionDuration = Seconds(3.0);
     Simulator::Schedule(startTransmissionTime, &StartSpecificTransmission, sourceIndex, targetIndex, nodes, nodesInterfaces, port, transmissionDuration);            
-    startTransmissionTime = startTransmissionTime + transmissionDuration;
+    // startTransmissionTime = startTransmissionTime + transmissionDuration;
     for (uint32_t i = 0; i < nodes.GetN(); i++)
     {
         for (uint32_t j = 0; j < nodes.GetN(); j++)
@@ -1004,7 +1009,7 @@ int main (int argc, char *argv[])
             targetIndex = j;
             if(i != j && !(i == 0 && j==1)){
                 Simulator::Schedule(startTransmissionTime, &StartSpecificTransmission, i, j, nodes, nodesInterfaces, port, transmissionDuration);            
-                startTransmissionTime = startTransmissionTime + transmissionDuration;
+                // startTransmissionTime = startTransmissionTime + transmissionDuration;
             }
         }
     }
