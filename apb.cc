@@ -31,11 +31,15 @@
 #include "apb.h"
 #include <ns3/ai-module.h>
 #include <thread>
+#include "ns3/multi-model-spectrum-channel.h"
+#include "ns3/waveform-generator-helper.h"
 using namespace ns3;
 using namespace std;
-
+uint16_t next_channel = 10;
 uint32_t txPower = 0;
 Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>* msgInterface;
+std::vector<Bands> allBands;
+Ptr<SpectrumModel> SpectrumInter; 
 // 创建一个新的类，该类继承自 Object
 class ComplexData : public Object {
 public:
@@ -395,7 +399,7 @@ double NodeSensitivity(Ptr<Node> onenode){
     Ptr<Node> node = onenode;
     Ptr<NetDevice> dev = node->GetDevice (0);
     Ptr<WifiNetDevice> wifiDev = dev->GetObject<WifiNetDevice> ();
-    Ptr<YansWifiPhy> phy = DynamicCast<YansWifiPhy>(wifiDev->GetPhy ());
+    Ptr<SpectrumWifiPhy> phy = DynamicCast<SpectrumWifiPhy>(wifiDev->GetPhy ());
     
 
     // 打印接收器灵敏度
@@ -505,7 +509,7 @@ void ModifyJsonFile(std::fstream& file) {
 double NodePower(Ptr<Node> node){
     Ptr<NetDevice> dev = node->GetDevice(0); 
     Ptr<WifiNetDevice> wifiDev = dev->GetObject<WifiNetDevice>();
-    Ptr<YansWifiPhy> phy = DynamicCast<YansWifiPhy>(wifiDev->GetPhy());
+    Ptr<SpectrumWifiPhy> phy = DynamicCast<SpectrumWifiPhy>(wifiDev->GetPhy());
     double txPower = phy->GetTxPowerStart();
     return txPower;
 }
@@ -537,19 +541,7 @@ DataRow parseLine(const string &line) {
     return data;
 }
 
-//提取并打印指定的网络设备集合中每个设备的传输功率范围
-void PrintTxPower(const NetDeviceContainer& devices,const string& devicesname) {
-    cout<<devicesname<<endl;
-    for (uint32_t i = 0; i < devices.GetN(); ++i) {
-        Ptr<NetDevice> device = devices.Get(i);
-        Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(device);
-        Ptr<YansWifiPhy> phy = DynamicCast<YansWifiPhy>(wifiDevice->GetPhy());
-        double txPowerStart = phy->GetTxPowerStart();
-        double txPowerEnd = phy->GetTxPowerEnd();
 
-        cout << "\tNode " << i << " Tx Power: " << txPowerStart << " to " << txPowerEnd << " dBm" << endl;
-    }
-}
 
 NodeContainer CreateNode(int number){
     NodeContainer nodes;
@@ -563,19 +555,9 @@ WifiHelper CreateWifiHelper(WifiStandard standard){
     return wifi;
 }
 
-YansWifiPhyHelper CreateYansWifiPhyHelper(double startPower,double endPower){
-    YansWifiPhyHelper wifiPhy = YansWifiPhyHelper();
-    wifiPhy.Set("TxPowerStart", DoubleValue(startPower));
-    wifiPhy.Set("TxPowerEnd", DoubleValue(endPower));
-    return wifiPhy;
-}
 
-//设置wifi信道
-void SetWifiChannel(YansWifiPhyHelper &deviceName)
-{
-    YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default();
-    deviceName.SetChannel(wifiChannel.Create());
-}
+
+
 
 void SetMobilityModelRandomWalk2d(MobilityHelper& mobilityModel)
 {
@@ -784,40 +766,226 @@ void ReceivePacket (std::string context, Ptr<const Packet> packet, const Address
     }
 }
 
-void StartSpecificTransmission(uint32_t sourceIndex, uint32_t targetIndex, NodeContainer &sourceNodes, Ipv4InterfaceContainer &targetInterfaces, uint16_t port, Time duration) {
+void StartSpecificTransmission(uint32_t sourceIndex, uint32_t targetIndex, NodeContainer &sourceNodes, NodeContainer &targetNodes, uint16_t port, Time duration) {
     Ptr<Node> sourceNode = sourceNodes.Get(sourceIndex);
-    Ipv4Address targetAddress = targetInterfaces.GetAddress(targetIndex);
+    // Ipv4Address targetAddress = targetInterfaces.GetAddress(targetIndex);
+    Ipv4Address targetAddress;
+    Ptr<Node> node = targetNodes.Get(targetIndex);
+    Ptr<Ipv4> ipv4 = node->GetObject<Ipv4>(); // 假设节点已安装了 IPv4
+    std::vector<Ipv4Address> addresses;
 
+    // 获取每个接口上的 IP 地址
+    for (uint32_t j = 0; j < ipv4->GetNInterfaces(); j++) {
+        for (uint32_t k = 0; k < ipv4->GetNAddresses(j); k++) {
+            Ipv4InterfaceAddress iface = ipv4->GetAddress(j, k);
+            addresses.push_back(iface.GetLocal());
+        }
+    }
+    if(addresses.size()>2){
+        // for(uint16_t i=1 ; i<addresses.size() ; ++i){
+        string id = FindIdFromMap(node);
+        ipToIdMap[addresses[3]] = id;
+        targetAddress = addresses[3];
+        // }
+    }else{
+        string id = FindIdFromMap(node);
+        ipToIdMap[addresses[1]] = id;
+        targetAddress = addresses[1];
+    }
     OnOffHelper onOffHelper("ns3::UdpSocketFactory", Address(InetSocketAddress(targetAddress, port)));
     onOffHelper.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1]"));
-    onOffHelper.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=1]"));//间隔1s发一次连续1s的信息
-    // onOffHelper.SetAttribute("DataRate", DataRateValue(DataRate("500kb/s")));
-    onOffHelper.SetAttribute("DataRate", StringValue("50kb/s"));
+    onOffHelper.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
+    onOffHelper.SetAttribute("DataRate", DataRateValue(DataRate("500kb/s")));
     onOffHelper.SetAttribute("PacketSize", UintegerValue(1024));
-
-    string id = FindIdFromMap(sourceNode);
-    // 记录发送开始时间
-    auto now = chrono::system_clock::now();
-    long long initialTime = chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()).count();
-    if (sendTimes[id]==0){
-        for (uint16_t i = 0; i < nodes.GetN(); i++)
-        {
-            string id = FindIdFromMap(nodes.Get(i));
-            sendTimes[id] == 0;
-        }
-        sendTimes[id] = initialTime;
-    }
-
     ApplicationContainer tempApp = onOffHelper.Install(sourceNode);
     tempApp.Start(Seconds(Simulator::Now().GetSeconds())); // 立即开始
     tempApp.Stop(Seconds(Simulator::Now().GetSeconds() + duration.GetSeconds())); // 持续时间后停止
+    // Simulator::Schedule(Seconds(Simulator::Now().GetSeconds() + duration.GetSeconds() + 0.1), &StartSpecificTransmission, sourceIndex, targetIndex, sourceNodes, targetNodes, port, duration); 
 }
 
 void SetTxPower(Ptr<Node> node, double txPower) {
     Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0)); // 假设wifi设备是第一个设备
-    Ptr<YansWifiPhy> phy = DynamicCast<YansWifiPhy>(wifiDevice->GetPhy());
+    Ptr<SpectrumWifiPhy> phy = DynamicCast<SpectrumWifiPhy>(wifiDevice->GetPhy());
     phy->SetTxPowerStart(txPower);
     phy->SetTxPowerEnd(txPower);
+}
+
+/**
+ * Spectrum
+*/
+void ConfigureWifi(WifiHelper &wifi, Ssid ssid, std::string dataRate)
+{
+    // 创建一个 Wi-Fi MAC 助手并设置为 Ad-hoc 模式
+    WifiMacHelper wifiMac;
+    wifiMac.SetType("ns3::AdhocWifiMac");
+
+    // 设置 SSID
+    Ssid red_dronessid = ssid;
+
+    // 设置数据传输率
+    StringValue DataRate = StringValue(dataRate);
+
+    // 设置远程站点管理器
+    wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager",
+                                          "DataMode", DataRate,
+                                          "ControlMode", DataRate);
+}
+
+void ConfigurePlainSpectrumWifiPhy(SpectrumWifiPhyHelper& spectrumWifiPhy, Ptr<FriisPropagationLossModel>& lossModel,double frequency, double rxSensitivity, 
+                                    uint32_t antennas, uint32_t maxTxSpatialStreams, uint32_t maxRxSpatialStreams, double txGain, double rxGain, double rxNoiseFigure, 
+                                    double txPowerStart, double txPowerEnd) {
+   // Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel>();
+    //Ptr<FriisPropagationLossModel> lossModel = CreateObject<FriisPropagationLossModel>();
+    lossModel->SetFrequency(frequency);
+    spectrumWifiPhy.Set("RxSensitivity", DoubleValue(rxSensitivity)); 
+    spectrumWifiPhy.Set("Antennas", UintegerValue(antennas)); 
+    spectrumWifiPhy.Set("MaxSupportedTxSpatialStreams", UintegerValue(maxTxSpatialStreams)); 
+    spectrumWifiPhy.Set("MaxSupportedRxSpatialStreams", UintegerValue(maxRxSpatialStreams));
+    spectrumWifiPhy.Set("TxGain", DoubleValue(txGain));
+    spectrumWifiPhy.Set("RxGain", DoubleValue(rxGain));
+    spectrumWifiPhy.Set("RxNoiseFigure", DoubleValue(rxNoiseFigure));
+    //spectrumChannel->AddPropagationLossModel(lossModel);
+    //Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel>();
+    //spectrumChannel->SetPropagationDelayModel(delayModel);
+   // spectrumWifiPhy.SetChannel(spectrumChannel);
+    spectrumWifiPhy.Set("TxPowerStart", DoubleValue(txPowerStart));
+    spectrumWifiPhy.Set("TxPowerEnd", DoubleValue(txPowerEnd));
+}
+void ConfigureMountainSpectrumWifiPhy(SpectrumWifiPhyHelper& spectrumWifiPhy, Ptr<FriisPropagationLossModel>& FriislossModeldouble ,Ptr<NakagamiPropagationLossModel>& NakagamilossModeldouble,
+                                                   double txPowerStart,double txPowerEnd, double m0, double m1, double m2,double Antennas,double txGain, double rxGain,double MaxSupportedTxSpatialStreams,
+                                                   double MaxSupportedRxSpatialStreams,double RxSensitivity,double frequency ,double rxNoiseFigure) {
+                                             
+        // 使用 SpectrumWifiPhyHelper
+      //SpectrumWifiPhyHelper spectrumWifiPhy = SpectrumWifiPhyHelper();
+     //Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel>();
+
+     //Ptr<FriisPropagationLossModel> lossModel = CreateObject<FriisPropagationLossModel>();
+     FriislossModeldouble->SetFrequency(frequency);
+    //Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel>();
+    //spectrumChannel->SetPropagationDelayModel(delayModel);
+    spectrumWifiPhy.Set("RxSensitivity", DoubleValue(RxSensitivity)); 
+    spectrumWifiPhy.Set("Antennas", UintegerValue(Antennas));
+    spectrumWifiPhy.Set("MaxSupportedTxSpatialStreams", UintegerValue(MaxSupportedTxSpatialStreams)); 
+    spectrumWifiPhy.Set("MaxSupportedRxSpatialStreams", UintegerValue(MaxSupportedRxSpatialStreams));
+    spectrumWifiPhy.Set("TxGain", DoubleValue(txGain));  // 设置发射天线增益
+    spectrumWifiPhy.Set("RxGain", DoubleValue(rxGain));  // 设置接收天线增益
+    spectrumWifiPhy.Set("RxNoiseFigure", DoubleValue(rxNoiseFigure));
+    //Ptr<NakagamiPropagationLossModel> nakagamiModel = CreateObject<NakagamiPropagationLossModel>();
+    NakagamilossModeldouble->SetAttribute("m0", DoubleValue(m0));
+    NakagamilossModeldouble->SetAttribute("m1", DoubleValue(m1));
+    NakagamilossModeldouble->SetAttribute("m2", DoubleValue(m2));
+    //spectrumChannel->AddPropagationLossModel(nakagamiModel);
+    //spectrumChannel->AddPropagationLossModel(lossModel);
+    //spectrumWifiPhy.SetChannel(spectrumChannel);
+    NakagamilossModeldouble->SetAttribute("Distance1" ,ns3::DoubleValue(501.0));
+    NakagamilossModeldouble->SetAttribute("Distance2", ns3:: DoubleValue(600.0));
+    spectrumWifiPhy.Set("TxPowerStart", DoubleValue(txPowerStart)); // dBm
+    spectrumWifiPhy.Set("TxPowerEnd", DoubleValue(txPowerEnd));  
+
+    
+    //spectrumWifiPhy.Set("ChannelSettings",StringValue(std::string("{") + (frequency == 5180 ? "36" : "38")+", 0, BAND_5GHZ, 0}")); 
+    }
+
+    
+void ConfigureCitySpectrumWifiPhy(SpectrumWifiPhyHelper& spectrumWifiPhy,Ptr<LogDistancePropagationLossModel>& LogDistancelossModeldouble,Ptr<NakagamiPropagationLossModel>&NakagamilossModeldouble,
+   double txPowerStart,double txPowerEnd, double m0, double m1, double m2,double Antennas,double txGain, double rxGain,
+double MaxSupportedTxSpatialStreams,double MaxSupportedRxSpatialStreams,double RxSensitivity,double referenceLoss,double referenceDistance,double pathLossExponent) {
+        // 使用 SpectrumWifiPhyHelper
+    Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel>();
+    LogDistancelossModeldouble->SetAttribute("ReferenceLoss",ns3::DoubleValue(referenceLoss));
+    LogDistancelossModeldouble->SetAttribute("ReferenceDistance",ns3 ::DoubleValue(referenceDistance));
+    LogDistancelossModeldouble->SetPathLossExponent(pathLossExponent);
+    Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel>();
+    spectrumChannel->SetPropagationDelayModel(delayModel);
+    spectrumWifiPhy.Set("RxSensitivity", DoubleValue(RxSensitivity)); 
+    spectrumWifiPhy.Set("Antennas", UintegerValue(Antennas));
+    spectrumWifiPhy.Set("MaxSupportedTxSpatialStreams", UintegerValue(MaxSupportedTxSpatialStreams)); 
+    spectrumWifiPhy.Set("MaxSupportedRxSpatialStreams", UintegerValue(MaxSupportedRxSpatialStreams));
+    spectrumWifiPhy.Set("TxGain", DoubleValue(txGain));  // 设置发射天线增益
+    spectrumWifiPhy.Set("RxGain", DoubleValue(rxGain));  // 设置接收天线增益
+    //   spectrumWifiPhy.Set("RxNoiseFigure",DoubleValue(5));//设置噪声指数
+    NakagamilossModeldouble->SetAttribute("m0", DoubleValue(m0));
+    NakagamilossModeldouble->SetAttribute("m1", DoubleValue(m1));
+    NakagamilossModeldouble->SetAttribute("m2", DoubleValue(m2));
+    // spectrumChannel->AddPropagationLossModel(NakagamilossModeldouble);
+    // spectrumChannel->AddPropagationLossModel(LogDistancelossModeldouble);
+    // spectrumWifiPhy.SetChannel(spectrumChannel);
+    NakagamilossModeldouble->SetAttribute("Distance1" ,ns3::DoubleValue(501.0));
+    NakagamilossModeldouble->SetAttribute("Distance2", ns3:: DoubleValue(600.0));
+    spectrumWifiPhy.Set("TxPowerStart", DoubleValue(txPowerStart)); // dBm
+    spectrumWifiPhy.Set("TxPowerEnd", DoubleValue(txPowerEnd));
+    
+    }
+
+
+void ConfigureForestSpectrumWifiPhy(SpectrumWifiPhyHelper& spectrumWifiPhy,Ptr<LogDistancePropagationLossModel>& LogDistancelossModeldouble,Ptr<NakagamiPropagationLossModel>&NakagamilossModeldouble,
+   double txPowerStart,double txPowerEnd, double m0, double m1, double m2,double Antennas,double txGain, double rxGain,
+    double MaxSupportedTxSpatialStreams,double MaxSupportedRxSpatialStreams,double RxSensitivity,double referenceLoss,double referenceDistance,double pathLossExponent) {
+        // 使用 SpectrumWifiPhyHelper
+    Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel>();
+    LogDistancelossModeldouble->SetAttribute("ReferenceLoss",ns3::DoubleValue(referenceLoss));
+    LogDistancelossModeldouble->SetAttribute("ReferenceDistance",ns3 ::DoubleValue(referenceDistance));
+    LogDistancelossModeldouble->SetPathLossExponent(pathLossExponent);
+    Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel>();
+    spectrumChannel->SetPropagationDelayModel(delayModel);
+    spectrumWifiPhy.Set("RxSensitivity", DoubleValue(RxSensitivity)); 
+    spectrumWifiPhy.Set("Antennas", UintegerValue(Antennas));
+    spectrumWifiPhy.Set("MaxSupportedTxSpatialStreams", UintegerValue(MaxSupportedTxSpatialStreams)); 
+    spectrumWifiPhy.Set("MaxSupportedRxSpatialStreams", UintegerValue(MaxSupportedRxSpatialStreams));
+    spectrumWifiPhy.Set("TxGain", DoubleValue(txGain));  // 设置发射天线增益
+    spectrumWifiPhy.Set("RxGain", DoubleValue(rxGain));  // 设置接收天线增益
+    //   spectrumWifiPhy.Set("RxNoiseFigure",DoubleValue(5));//设置噪声指数
+    NakagamilossModeldouble->SetAttribute("m0", DoubleValue(m0));
+    NakagamilossModeldouble->SetAttribute("m1", DoubleValue(m1));
+    NakagamilossModeldouble->SetAttribute("m2", DoubleValue(m2));
+    // spectrumChannel->AddPropagationLossModel(NakagamilossModeldouble);
+    // spectrumChannel->AddPropagationLossModel(LogDistancelossModeldouble);
+    // spectrumWifiPhy.SetChannel(spectrumChannel);
+    NakagamilossModeldouble->SetAttribute("Distance1" ,ns3::DoubleValue(501.0));
+    NakagamilossModeldouble->SetAttribute("Distance2", ns3:: DoubleValue(600.0));
+    spectrumWifiPhy.Set("TxPowerStart", DoubleValue(txPowerStart)); // dBm
+    spectrumWifiPhy.Set("TxPowerEnd", DoubleValue(txPowerEnd));
+    }
+
+void ChangeChannel(Ptr<Node> node, uint16_t channelId) {
+    Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0)); // 获取节点的 WiFi 设备
+    Ptr<SpectrumWifiPhy> spectrumPhy = DynamicCast<SpectrumWifiPhy>(wifiDevice->GetPhy());
+    cout << "执行ChangeChannel" << endl;
+    spectrumPhy->SetAttribute("ChannelSettings",StringValue(std::string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}")));
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    // spectrumPhy->SetAttribute("ChannelSettings",StringValue(std::string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}")));
+    // if(spectrumPhy->IsStateIdle())
+    //     spectrumPhy->SetAttribute("ChannelSettings",StringValue(std::string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}"))); // 设置新的频道号
+    // else
+    //     std::cout << "当前设备忙，无法切换信道" << std::endl;
+    // spectrumPhy->SetAttribute("ChannelSettings",StringValue(std::string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}")));
+    // std::cout << "spectrumPhy->IsStateRx(): "<< spectrumPhy->IsStateRx() << "  spectrumPhy->IsStateTx(): "<< spectrumPhy->IsStateTx() << std::endl;
+    // std::cout << "spectrumPhy->IsStateIdle(): "<< spectrumPhy->IsStateIdle() << "  spectrumPhy->IsStateCcaBusy(): "<< spectrumPhy->IsStateCcaBusy() << std::endl;
+    // // std::cout << spectrumPhy->GetState() << std::endl;
+    // if (!spectrumPhy->IsStateIdle() || !spectrumPhy->IsStateCcaBusy()) {
+    //     std::cout << "当前设备忙，无法切换信道" << std::endl;
+    // }else{
+    //     spectrumPhy->SetAttribute("ChannelSettings",StringValue(std::string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}"))); // 设置新的频道号
+    //     std::cout << "切换信道中,下一个信道:"<< channelId << std::endl;
+    // }
+    // if(spectrumPhy->IsStateIdle()){
+    //     spectrumPhy->SetAttribute("ChannelSettings",StringValue(std::string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}"))); // 设置新的频道号
+    //     std::cout << "切换信道中,下一个信道:"<< channelId << std::endl;
+    // }else{
+    //     std::cout << "当前设备忙，无法切换信道" << std::endl;
+    // }
+    // // std::cout << spectrumPhy->IsStateIdle() << std::endl;
+    // Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0)); // 假设 WiFi 设备在第一个设备接口上
+    // Ptr<SpectrumWifiPhy> spectrumPhy = DynamicCast<SpectrumWifiPhy>(wifiDevice->GetPhy());
+
+
+
+}
+void ChangeAllNodesChannel(NodeContainer nodes, uint16_t channelId) {
+    for (NodeContainer::Iterator i = nodes.Begin(); i != nodes.End(); ++i) {
+        Ptr<Node> node = (*i);
+        ChangeChannel(node, channelId);
+    }
 }
 
 void MonitorSnifferRx (Ptr<Node> node, Ptr<const Packet> packet, uint16_t channelFreqMhz, WifiTxVector txVector, 
@@ -864,7 +1032,9 @@ void MonitorSnifferRx (Ptr<Node> node, Ptr<const Packet> packet, uint16_t channe
         msgInterface->CppRecvEnd();
         std::cout << " 结束cppRecv " << std::endl;
         SetTxPower(node, txPower);
-
+        std::cout << "Set Power : " << txPower << std::endl;
+        ChangeChannel(node, next_channel);
+        std::cout << "Set Channel : "<< next_channel << std::endl;
     }
 
 
@@ -884,12 +1054,15 @@ void PrintRoutingTable(std::string filePath, Time printInterval) {
 
 int main (int argc, char *argv[])
 {
-    //创建interface实例
+       //创建interface实例
     auto interface = Ns3AiMsgInterface::Get();
     interface->SetIsMemoryCreator(false);
     interface->SetUseVector(false);
     interface->SetHandleFinish(true);
     msgInterface = interface->GetInterface<EnvStruct, ActStruct>();
+
+
+
     CommandLine cmd;
     cmd.Parse(argc, argv);
 
@@ -922,16 +1095,355 @@ int main (int argc, char *argv[])
     double startPower, endPower;
     endPower = 50;
     startPower = endPower;
-    YansWifiPhyHelper nodesWifiPhy = CreateYansWifiPhyHelper(startPower, endPower);
+    //创建spectrumphyhelper
+    SpectrumWifiPhyHelper spectrumWifiPhy = SpectrumWifiPhyHelper();
 
-    //创建信道助手,并设置信道
-    SetWifiChannel(nodesWifiPhy);
+ /**
+     * Spectrum Init
+    */
+    double frequencyGHz = 100e6;       // 频率, 单位GHz
+    double rxSensitivity = -110.0;          // 接收灵敏度, 单位dBm
+    uint32_t antennas = 1;                  // 天线数量
+    uint32_t maxTxSpatialStreams = 1;       // 最大传输空间流数量
+    uint32_t maxRxSpatialStreams = 1;       // 最大接收空间流数量
+    double txGain = 12.5;                   // 发射天线增益, 单位dB
+    double rxGain = 12.5;                   // 接收天线增益, 单位dB
+    double rxNoiseFigure = 40;              // 接收噪声指数
+    double txPowerStart = 35;               // 发射功率起始值, 单位dBm
+    double txPowerEnd = 35;                 // 发射功率结束值, 单位dBm
+    double m0=1.2;
+    double m1=1.2;
+    double m2=1.2;
+    double referenceLoss=50;
+    double referenceDistance=2.95;
+    double pathLossExponent=2.95;
+    int type = 0;
+    int weather = 0;
+    int place = 0;
+
+    //创建损失模型
+    Ptr<FriisPropagationLossModel> FriisPlainlossModel = CreateObject<FriisPropagationLossModel>();
+    Ptr<FriisPropagationLossModel> FriisMountainlossModel = CreateObject<FriisPropagationLossModel>();
+    Ptr<NakagamiPropagationLossModel> NakagamiMountainlossModel = CreateObject<NakagamiPropagationLossModel>(); 
+    Ptr<NakagamiPropagationLossModel> NakagamiCitylossModel = CreateObject<NakagamiPropagationLossModel>(); 
+    Ptr<LogDistancePropagationLossModel> LogDistanceCitylossModel= CreateObject<LogDistancePropagationLossModel>();
+    Ptr<LogDistancePropagationLossModel> LogDistanceForestlossModel= CreateObject<LogDistancePropagationLossModel>();
+    Ptr<NakagamiPropagationLossModel> NakagamiForestlossModel = CreateObject<NakagamiPropagationLossModel>();
+    //
+    WifiMacHelper nodeswifiMac = CreateWifiMacHelper("ns3::AdhocWifiMac");
+    ConfigureWifi(wifi, Ssid("ns3-wifi"), "HtMcs1");
+
+    NetDeviceContainer node0Devices ;
+    NetDeviceContainer node1Devices;
+    NetDeviceContainer node2Devices ;
+    NetDeviceContainer node3Devices ;
+    NetDeviceContainer node4Devices ;
+    NetDeviceContainer node5Devices;
+    NetDeviceContainer node6Devices ;
+    NetDeviceContainer node7Devices;
+    NetDeviceContainer node8Devices ;
+    NetDeviceContainer node9Devices;  
+    NetDeviceContainer node10Devices;
+    NetDeviceContainer node11Devices;
+    NetDeviceContainer node12Devices ;
+    NetDeviceContainer node13Devices ;
+    NetDeviceContainer node14Devices ;
+    NetDeviceContainer node15Devices ;
+    NetDeviceContainer node16Devices ;
+    NetDeviceContainer node17Devices ;
+    NetDeviceContainer node18Devices ;      
+    NetDeviceContainer node19Devices ;
+    NetDeviceContainer node20Devices ;
+    NetDeviceContainer node21Devices ;
+    NetDeviceContainer node22Devices ;
+    NetDeviceContainer node23Devices ;
+    NetDeviceContainer node24Devices ;
+    NetDeviceContainer node25Devices ;
+    NetDeviceContainer node26Devices;       
+    NetDeviceContainer node27Devices ;
+
+    for(int i=0;i<28;i++)
+    {
+    frequencyGHz = 100e6*8;
+    if(i==0)
+    {
+            frequencyGHz = 100e6*8;
+    Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel>();
+    spectrumChannel->AddPropagationLossModel(FriisMountainlossModel);
+    spectrumChannel->AddPropagationLossModel(NakagamiMountainlossModel);
+    Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel>();
+    spectrumChannel->SetPropagationDelayModel(delayModel);
+    spectrumWifiPhy.SetChannel(spectrumChannel);        
+    }
+    if(i==0||i==4||i==5||i==8||i==20)//sunny
+    {type=0;
+        ConfigureMountainSpectrumWifiPhy (spectrumWifiPhy,FriisMountainlossModel,NakagamiMountainlossModel,txPowerStart,txPowerEnd,m0-type, m1-type, m2-type, antennas, txGain, rxGain,
+                                    maxTxSpatialStreams,maxRxSpatialStreams,rxSensitivity,frequencyGHz,rxNoiseFigure);      
+        if(i==0)
+        {   
+            node0Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(0));
+        
+        }
+        if(i==4)
+        {
+            node0Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(4));
+            
+        }
+        if(i==5)
+        {
+            node5Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(5));
+            
+        }
+        if(i==8)
+        {
+            node8Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(8));
+
+        }  
+        if(i==20)
+        {
+            node20Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(20));
+            
+        }        
+        
+    }
+    if(i==1||i==3||i==9||i==10||i==15||i==18||i==24||i==25||i==27)//cloudy
+    {type=0.1;
+        ConfigureMountainSpectrumWifiPhy (spectrumWifiPhy,FriisMountainlossModel,NakagamiMountainlossModel,txPowerStart,txPowerEnd,m0-type, m1-type, m2-type, antennas, txGain, rxGain,
+                                    maxTxSpatialStreams,maxRxSpatialStreams,rxSensitivity,frequencyGHz,rxNoiseFigure);      
+        if(i==1)
+        {
+                node1Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(1));
+                
+        }
+        if(i==3)
+        {
+            node3Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(3));
+            
+        }
+        if(i==9)
+        {
+            node9Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(9)); 
+            
+        }
+        if(i==10)
+        {
+            node10Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(10));
+            
+        }  
+        if(i==15)
+        {
+            node15Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(15));
+            
+        } 
+            if(i==18)
+        {
+            node18Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(18));
+            
+        }
+        if(i==24)
+        {
+            node24Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(24));
+            
+        }
+        if(i==25)
+        {
+                node25Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(25));
+                
+        }
+        if(i==27)
+        {
+                node27Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(27));
+                
+        }  
+
+    }
+    if(i==2||i==6||i==7||i==12||i==14||i==16||i==19||i==21||i==22||i==23||i==26)
+    {type=0.12;
+    //snowy
+            ConfigureMountainSpectrumWifiPhy (spectrumWifiPhy,FriisMountainlossModel,NakagamiMountainlossModel,txPowerStart,txPowerEnd,m0-type, m1-type, m2-type, antennas, txGain, rxGain,
+                                    maxTxSpatialStreams,maxRxSpatialStreams,rxSensitivity,frequencyGHz,rxNoiseFigure);      
+            if(i==2)
+        {
+                node2Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(2));
+                
+        }
+        if(i==6)
+        {
+            node6Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(6));
+            
+        }
+        if(i==7)
+        {
+
+            node7Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(7)); 
+            
+        }
+        if(i==12)
+        {
+            node12Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(12));
+            
+        }  
+        if(i==14)
+        {
+            node14Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(14));
+            
+        } 
+            if(i==16)
+        {
+            node16Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(16));
+            
+        }
+        if(i==19)
+        {
+            node19Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(19));
+            
+        }
+        if(i==21)
+        {
+                node21Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(21));
+                
+        }
+        if(i==22)
+        {
+            node22Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(22));
+            
+        }
+            if(i==23)
+        {
+                node23Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(23));
+                
+        }
+        if(i==26)
+        {
+                node26Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(26));
+                
+        }          
+            }
+    if(i==11||i==13||i==17)//rainy
+    {type=0.14;
+            ConfigureMountainSpectrumWifiPhy (spectrumWifiPhy,FriisMountainlossModel,NakagamiMountainlossModel,txPowerStart,txPowerEnd,m0-type, m1-type, m2-type, antennas, txGain, rxGain,
+                                    maxTxSpatialStreams,maxRxSpatialStreams,rxSensitivity,frequencyGHz,rxNoiseFigure);      
+        if(i==11)
+        { 
+            node11Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(11));
+            
+        }
+            if(i==13)
+        { 
+                node13Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(13));
+                
+        }
+        if(i==17)
+        {
+                node17Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(17)); 
+        }    
+        
+    }
+    }
+    if(place==1){
+    Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel>();
+    spectrumChannel->AddPropagationLossModel(FriisPlainlossModel);
+    Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel>();
+    spectrumChannel->SetPropagationDelayModel(delayModel);
+    spectrumWifiPhy.SetChannel(spectrumChannel);
+    switch(weather){
+    case 1:type=5;break; 
+    case 2:type=6;break; 
+    case 3:type=7;break; 
+    case 4:type=8;break; 
+    }
+    ConfigurePlainSpectrumWifiPhy (spectrumWifiPhy,FriisPlainlossModel,frequencyGHz*type,rxSensitivity, antennas, maxTxSpatialStreams, maxRxSpatialStreams, txGain, rxGain,
+                                    rxNoiseFigure,txPowerStart,txPowerEnd);    
+    }
+    if(place==2){
+    frequencyGHz = 100e6*8;
+    Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel>();
+    spectrumChannel->AddPropagationLossModel(FriisMountainlossModel);
+    spectrumChannel->AddPropagationLossModel(NakagamiMountainlossModel);
+    Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel>();
+    spectrumChannel->SetPropagationDelayModel(delayModel);
+    spectrumWifiPhy.SetChannel(spectrumChannel);
+    switch(weather){
+    case 1:type=0;break; 
+    case 2:type=0.1;break; 
+    case 3:type=0.12;break; 
+    case 4:type=0.15;break; 
+    }
+    ConfigureMountainSpectrumWifiPhy (spectrumWifiPhy,FriisMountainlossModel,NakagamiMountainlossModel,txPowerStart,txPowerEnd,m0-type, m1-type, m2-type, antennas, txGain, rxGain,
+                                    maxTxSpatialStreams,maxRxSpatialStreams,rxSensitivity,frequencyGHz,rxNoiseFigure);           
+    }
+    if(place==3){
+    Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel>();
+    spectrumChannel->AddPropagationLossModel(NakagamiCitylossModel);
+    spectrumChannel->AddPropagationLossModel(LogDistanceCitylossModel);
+    Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel>();
+    spectrumChannel->SetPropagationDelayModel(delayModel);
+    spectrumWifiPhy.SetChannel(spectrumChannel);
+    switch(weather){
+    case 1:type=0;break; 
+    case 2:type=3;break; 
+    case 3:type=6;break; 
+    case 4:type=7;break; 
+    }
+    ConfigureCitySpectrumWifiPhy (spectrumWifiPhy,LogDistanceCitylossModel,NakagamiCitylossModel,txPowerStart,txPowerEnd,m0, m1, m2, antennas, txGain, rxGain,
+                                    maxTxSpatialStreams,maxRxSpatialStreams,rxSensitivity,referenceLoss+type,referenceDistance,pathLossExponent);           
+    }
+    if(place==4){
+    Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel>();
+    spectrumChannel->AddPropagationLossModel(NakagamiForestlossModel);
+    spectrumChannel->AddPropagationLossModel(LogDistanceForestlossModel);
+    Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel>();
+    spectrumChannel->SetPropagationDelayModel(delayModel);
+    spectrumWifiPhy.SetChannel(spectrumChannel);
+    switch(weather){
+    case 1:type=0;break; 
+    case 2:type=2;break; 
+    case 3:type=5;break; 
+    case 4:type=6;break; 
+    }
+    ConfigureForestSpectrumWifiPhy (spectrumWifiPhy,LogDistanceForestlossModel,NakagamiForestlossModel,txPowerStart,txPowerEnd,m0, m1, m2, antennas, txGain, rxGain,
+                                    maxTxSpatialStreams,maxRxSpatialStreams,rxSensitivity,referenceLoss+type,referenceDistance,pathLossExponent);           
+    }
 
     //创建MAC层助手,并设置为AD-Hoc模式
-    WifiMacHelper nodesWifiMac = CreateWifiMacHelper("ns3::AdhocWifiMac");
+    // WifiMacHelper nodesWifiMac = CreateWifiMacHelper("ns3::AdhocWifiMac");
 
-    NetDeviceContainer nodeDevices = wifi.Install(nodesWifiPhy, nodesWifiMac, nodes);
+    // NetDeviceContainer nodeDevices = wifi.Install(nodesWifiPhy, nodesWifiMac, nodes);
+    //     // 2.4GHz WiFi频段的起始频率
+    // double startFrequency = 2412e6;
+    // // 2.4GHz WiFi频段每个信道的间隔
+    // double channelSpacing = 5e6;
+    // // 2.4GHz WiFi标准信道宽度
+    // double channelWidth = 20e6;
+    // for (int i = 0; i < 13; ++i) {
+    //     Bands band;
+    //     BandInfo bandInfo;
+    //     bandInfo.fc = startFrequency + i * channelSpacing;
+    //     bandInfo.fl = bandInfo.fc - channelWidth / 2.0;
+    //     bandInfo.fh = bandInfo.fc + channelWidth / 2.0;
+    //     band.push_back(bandInfo);
+    //     // 将每个 Band 添加到 allBands 中
+    //     allBands.push_back(band);
+    // }
 
+    // SpectrumInter = Create<SpectrumModel>(allBands[0]);
+    // double waveformPower = 0.015;
+    // Ptr<SpectrumValue> wgPsd =
+    //         Create<SpectrumValue>(SpectrumInter);
+    //     *wgPsd = waveformPower / 20e6; // PSD spread across 20 MHz
+    //     WaveformGeneratorHelper waveformGeneratorHelper;
+    //     waveformGeneratorHelper.SetChannel(spectrumChannel);
+    //     waveformGeneratorHelper.SetTxPowerSpectralDensity(wgPsd);
+    //     waveformGeneratorHelper.SetPhyAttribute("Period", TimeValue(Seconds(0.0007)));
+    //     waveformGeneratorHelper.SetPhyAttribute("DutyCycle", DoubleValue(1));
+    //     NetDeviceContainer waveformGeneratorDevices =
+    //     waveformGeneratorHelper.Install(interferingNode);
+    //     Simulator::Schedule(Seconds(0.002),
+    //                         &WaveformGenerator::Start,
+    //                         waveformGeneratorDevices.Get(0)
+    //                             ->GetObject<NonCommunicatingNetDevice>()
+    //                             ->GetPhy()
+    //                             ->GetObject<WaveformGenerator>());
     //设置移动模型
     MobilityHelper mobility;
 
@@ -960,7 +1472,35 @@ int main (int argc, char *argv[])
 
     Ipv4AddressHelper address;
     address.SetBase("10.1.8.0","255.255.255.0");
-    Ipv4InterfaceContainer nodesInterfaces = address.Assign(nodeDevices);
+    // Ipv4InterfaceContainer nodesInterfaces = address.Assign(nodeDevices);
+    Ipv4InterfaceContainer nodes0Interfaces = address.Assign(node0Devices);
+    Ipv4InterfaceContainer nodes1Interfaces = address.Assign(node1Devices);
+    Ipv4InterfaceContainer nodes2Interfaces = address.Assign(node2Devices);
+    Ipv4InterfaceContainer nodes3Interfaces = address.Assign(node3Devices);
+    Ipv4InterfaceContainer nodes4Interfaces = address.Assign(node4Devices);
+    Ipv4InterfaceContainer nodes5Interfaces = address.Assign(node5Devices);
+    Ipv4InterfaceContainer nodes6Interfaces = address.Assign(node6Devices);
+    Ipv4InterfaceContainer nodes7Interfaces = address.Assign(node7Devices);
+    Ipv4InterfaceContainer nodes8Interfaces = address.Assign(node8Devices);
+    Ipv4InterfaceContainer nodes9Interfaces = address.Assign(node9Devices);
+    Ipv4InterfaceContainer nodes10Interfaces = address.Assign(node10Devices);
+    Ipv4InterfaceContainer nodes11Interfaces = address.Assign(node11Devices);
+    Ipv4InterfaceContainer nodes12Interfaces = address.Assign(node12Devices);
+    Ipv4InterfaceContainer nodes13Interfaces = address.Assign(node13Devices);
+    Ipv4InterfaceContainer nodes14Interfaces = address.Assign(node14Devices);
+    Ipv4InterfaceContainer nodes15Interfaces = address.Assign(node15Devices);
+    Ipv4InterfaceContainer nodes16Interfaces = address.Assign(node16Devices);
+    Ipv4InterfaceContainer nodes17Interfaces = address.Assign(node17Devices);
+    Ipv4InterfaceContainer nodes18Interfaces = address.Assign(node18Devices);
+    Ipv4InterfaceContainer nodes19Interfaces = address.Assign(node19Devices);
+    Ipv4InterfaceContainer nodes20Interfaces = address.Assign(node20Devices);
+    Ipv4InterfaceContainer nodes21Interfaces = address.Assign(node21Devices);
+    Ipv4InterfaceContainer nodes22Interfaces = address.Assign(node22Devices);
+    Ipv4InterfaceContainer nodes23Interfaces = address.Assign(node23Devices);
+    Ipv4InterfaceContainer nodes24Interfaces = address.Assign(node24Devices);
+    Ipv4InterfaceContainer nodes25Interfaces = address.Assign(node25Devices);
+    Ipv4InterfaceContainer nodes26Interfaces = address.Assign(node26Devices);
+    Ipv4InterfaceContainer nodes27Interfaces = address.Assign(node27Devices);
 
 /*
     Time printInterval = Seconds(30);
@@ -999,7 +1539,7 @@ int main (int argc, char *argv[])
     FindIdFromIpMap(nodes);
     Time startTransmissionTime = Seconds(0.0);
     Time transmissionDuration = Seconds(3.0);
-    Simulator::Schedule(startTransmissionTime, &StartSpecificTransmission, sourceIndex, targetIndex, nodes, nodesInterfaces, port, transmissionDuration);            
+    Simulator::Schedule(startTransmissionTime, &StartSpecificTransmission, sourceIndex, targetIndex, nodes, nodes, port, transmissionDuration);            
     // startTransmissionTime = startTransmissionTime + transmissionDuration;
     for (uint32_t i = 0; i < nodes.GetN(); i++)
     {
@@ -1008,7 +1548,7 @@ int main (int argc, char *argv[])
             sourceIndex = i;
             targetIndex = j;
             if(i != j && !(i == 0 && j==1)){
-                Simulator::Schedule(startTransmissionTime, &StartSpecificTransmission, i, j, nodes, nodesInterfaces, port, transmissionDuration);            
+                Simulator::Schedule(startTransmissionTime, &StartSpecificTransmission, i, j, nodes, nodes, port, transmissionDuration);            
                 // startTransmissionTime = startTransmissionTime + transmissionDuration;
             }
         }
@@ -1018,7 +1558,7 @@ int main (int argc, char *argv[])
     for (uint32_t i = 0; i < nodes.GetN(); ++i) { 
         Ptr<NetDevice> device = nodes.Get(i)->GetDevice(0);
         Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(device);
-        Ptr<YansWifiPhy> phy = DynamicCast<YansWifiPhy>(wifiDevice->GetPhy());
+        Ptr<SpectrumWifiPhy> phy = DynamicCast<SpectrumWifiPhy>(wifiDevice->GetPhy());
         tempNode = nodes.Get(i);
         phy->TraceConnectWithoutContext("MonitorSnifferRx", MakeBoundCallback(&MonitorSnifferRx, tempNode));
     } 
