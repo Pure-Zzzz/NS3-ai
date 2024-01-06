@@ -987,6 +987,22 @@ void ChangeAllNodesChannel(NodeContainer nodes, uint16_t channelId) {
     }
 }
 
+void ConfigureNode(int nodeId, double type, SpectrumWifiPhyHelper& spectrumWifiPhy, WifiMacHelper& nodeswifiMac, NodeContainer& nodes,Ptr<FriisPropagationLossModel>& FriislossModeldouble,
+                    Ptr<NakagamiPropagationLossModel>&NakagamilossModeldouble,WifiHelper& wifi) {
+    double txPowerStart = 35;
+    double txPowerEnd = 35;
+    double m0 = 1.2, m1 = 1.2, m2 = 1.2;
+    uint32_t antennas = 1;
+    double txGain = 12.5, rxGain = 12.5;
+    uint32_t maxTxSpatialStreams = 1, maxRxSpatialStreams = 1;
+    double rxSensitivity = -101.0;
+    double frequencyGHz = 100e6 * 8;
+    double rxNoiseFigure = 40.0;
+    ConfigureMountainSpectrumWifiPhy(spectrumWifiPhy, FriislossModeldouble, NakagamilossModeldouble, txPowerStart, txPowerEnd, m0-type, m1-type, m2-type, antennas, 
+    txGain, rxGain, maxTxSpatialStreams, maxRxSpatialStreams, rxSensitivity, frequencyGHz, rxNoiseFigure);
+
+} 
+
 void MonitorSnifferRx (Ptr<Node> node, Ptr<const Packet> packet, uint16_t channelFreqMhz, WifiTxVector txVector, 
                         MpduInfo mpduInfo, SignalNoiseDbm signalNoise, uint16_t frequency) {
     double snr = signalNoise.signal - signalNoise.noise;
@@ -1147,278 +1163,98 @@ int main (int argc, char *argv[])
     WifiMacHelper nodeswifiMac = CreateWifiMacHelper("ns3::AdhocWifiMac");
     ConfigureWifi(wifi, Ssid("ns3-wifi"), "HtMcs1");
 
-    NetDeviceContainer node0Devices ;
-    NetDeviceContainer node1Devices;
-    NetDeviceContainer node2Devices ;
-    NetDeviceContainer node3Devices ;
-    NetDeviceContainer node4Devices ;
-    NetDeviceContainer node5Devices;
-    NetDeviceContainer node6Devices ;
-    NetDeviceContainer node7Devices;
-    NetDeviceContainer node8Devices ;
-    NetDeviceContainer node9Devices;  
-    NetDeviceContainer node10Devices;
-    NetDeviceContainer node11Devices;
-    NetDeviceContainer node12Devices ;
-    NetDeviceContainer node13Devices ;
-    NetDeviceContainer node14Devices ;
-    NetDeviceContainer node15Devices ;
-    NetDeviceContainer node16Devices ;
-    NetDeviceContainer node17Devices ;
-    NetDeviceContainer node18Devices ;      
-    NetDeviceContainer node19Devices ;
-    NetDeviceContainer node20Devices ;
-    NetDeviceContainer node21Devices ;
-    NetDeviceContainer node22Devices ;
-    NetDeviceContainer node23Devices ;
-    NetDeviceContainer node24Devices ;
-    NetDeviceContainer node25Devices ;
-    NetDeviceContainer node26Devices;       
-    NetDeviceContainer node27Devices ;
+    const int NUM_NODES = 28;
+    NetDeviceContainer nodeDevices[NUM_NODES];
 
-    for(int i=0;i<28;i++)
-    {
-    frequencyGHz = 100e6*8;
-    if(i==0)
-    {
-            frequencyGHz = 100e6*8;
-    Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel>();
-    spectrumChannel->AddPropagationLossModel(FriisMountainlossModel);
-    spectrumChannel->AddPropagationLossModel(NakagamiMountainlossModel);
-    Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel>();
-    spectrumChannel->SetPropagationDelayModel(delayModel);
-    spectrumWifiPhy.SetChannel(spectrumChannel);        
-    }
-    if(i==0||i==4||i==5||i==8||i==20)//sunny
-    {type=0;
-        ConfigureMountainSpectrumWifiPhy (spectrumWifiPhy,FriisMountainlossModel,NakagamiMountainlossModel,txPowerStart,txPowerEnd,m0-type, m1-type, m2-type, antennas, txGain, rxGain,
-                                    maxTxSpatialStreams,maxRxSpatialStreams,rxSensitivity,frequencyGHz,rxNoiseFigure);      
+    for (int i = 0; i < 28; i++) {
+        frequencyGHz = 100e6*8;
         if(i==0)
-        {   
-            node0Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(0));
-        
+        {
+            frequencyGHz = 100e6*8;
+            Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel>();
+            spectrumChannel->AddPropagationLossModel(FriisMountainlossModel);
+            spectrumChannel->AddPropagationLossModel(NakagamiMountainlossModel);
+            Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel>();
+            spectrumChannel->SetPropagationDelayModel(delayModel);
+            spectrumWifiPhy.SetChannel(spectrumChannel);        
         }
-        if(i==4)
-        {
-            node0Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(4));
-            
-        }
-        if(i==5)
-        {
-            node5Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(5));
-            
-        }
-        if(i==8)
-        {
-            node8Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(8));
-
-        }  
-        if(i==20)
-        {
-            node20Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(20));
-            
-        }        
-        
-    }
-    if(i==1||i==3||i==9||i==10||i==15||i==18||i==24||i==25||i==27)//cloudy
-    {type=0.1;
-        ConfigureMountainSpectrumWifiPhy (spectrumWifiPhy,FriisMountainlossModel,NakagamiMountainlossModel,txPowerStart,txPowerEnd,m0-type, m1-type, m2-type, antennas, txGain, rxGain,
-                                    maxTxSpatialStreams,maxRxSpatialStreams,rxSensitivity,frequencyGHz,rxNoiseFigure);      
-        if(i==1)
-        {
-                node1Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(1));
-                
-        }
-        if(i==3)
-        {
-            node3Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(3));
-            
-        }
-        if(i==9)
-        {
-            node9Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(9)); 
-            
-        }
-        if(i==10)
-        {
-            node10Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(10));
-            
-        }  
-        if(i==15)
-        {
-            node15Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(15));
-            
-        } 
-            if(i==18)
-        {
-            node18Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(18));
-            
-        }
-        if(i==24)
-        {
-            node24Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(24));
-            
-        }
-        if(i==25)
-        {
-                node25Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(25));
-                
-        }
-        if(i==27)
-        {
-                node27Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(27));
-                
-        }  
-
-    }
-    if(i==2||i==6||i==7||i==12||i==14||i==16||i==19||i==21||i==22||i==23||i==26)
-    {type=0.12;
-    //snowy
-            ConfigureMountainSpectrumWifiPhy (spectrumWifiPhy,FriisMountainlossModel,NakagamiMountainlossModel,txPowerStart,txPowerEnd,m0-type, m1-type, m2-type, antennas, txGain, rxGain,
-                                    maxTxSpatialStreams,maxRxSpatialStreams,rxSensitivity,frequencyGHz,rxNoiseFigure);      
-            if(i==2)
-        {
-                node2Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(2));
-                
-        }
-        if(i==6)
-        {
-            node6Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(6));
-            
-        }
-        if(i==7)
-        {
-
-            node7Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(7)); 
-            
-        }
-        if(i==12)
-        {
-            node12Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(12));
-            
-        }  
-        if(i==14)
-        {
-            node14Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(14));
-            
-        } 
-            if(i==16)
-        {
-            node16Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(16));
-            
-        }
-        if(i==19)
-        {
-            node19Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(19));
-            
-        }
-        if(i==21)
-        {
-                node21Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(21));
-                
-        }
-        if(i==22)
-        {
-            node22Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(22));
-            
-        }
-            if(i==23)
-        {
-                node23Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(23));
-                
-        }
-        if(i==26)
-        {
-                node26Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(26));
-                
-        }          
+            double type = 0;
+            if (i == 0 || i == 4 || i == 5 || i == 8 || i == 20) { // Sunny
+                type = 0;
+            } else if (i == 1 || i == 3 || i == 9 || i == 10 || i == 15 || i == 18 || i == 24 || i == 25 || i == 27) { // Cloudy
+                type = 0.1;
+            } else if (i == 2 || i == 6 || i == 7 || i == 12 || i == 14 || i == 16 || i == 19 || i == 21 || i == 22 || i == 23 || i == 26) { // Snowy
+                type = 0.12;
+            } else if (i == 11 || i == 13 || i == 17) { // Rainy
+                type = 0.14;
             }
-    if(i==11||i==13||i==17)//rainy
-    {type=0.14;
-            ConfigureMountainSpectrumWifiPhy (spectrumWifiPhy,FriisMountainlossModel,NakagamiMountainlossModel,txPowerStart,txPowerEnd,m0-type, m1-type, m2-type, antennas, txGain, rxGain,
-                                    maxTxSpatialStreams,maxRxSpatialStreams,rxSensitivity,frequencyGHz,rxNoiseFigure);      
-        if(i==11)
-        { 
-            node11Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(11));
-            
+            ConfigureNode(i, type, spectrumWifiPhy, nodeswifiMac, nodes,FriisMountainlossModel,NakagamiMountainlossModel,wifi);
+            nodeDevices[i] = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(i));
         }
-            if(i==13)
-        { 
-                node13Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(13));
-                
-        }
-        if(i==17)
-        {
-                node17Devices = wifi.Install(spectrumWifiPhy, nodeswifiMac, nodes.Get(17)); 
-        }    
-        
-    }
-    }
     if(place==1){
-    Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel>();
-    spectrumChannel->AddPropagationLossModel(FriisPlainlossModel);
-    Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel>();
-    spectrumChannel->SetPropagationDelayModel(delayModel);
-    spectrumWifiPhy.SetChannel(spectrumChannel);
-    switch(weather){
-    case 1:type=5;break; 
-    case 2:type=6;break; 
-    case 3:type=7;break; 
-    case 4:type=8;break; 
-    }
-    ConfigurePlainSpectrumWifiPhy (spectrumWifiPhy,FriisPlainlossModel,frequencyGHz*type,rxSensitivity, antennas, maxTxSpatialStreams, maxRxSpatialStreams, txGain, rxGain,
+        Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel>();
+        spectrumChannel->AddPropagationLossModel(FriisPlainlossModel);
+        Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel>();
+        spectrumChannel->SetPropagationDelayModel(delayModel);
+        spectrumWifiPhy.SetChannel(spectrumChannel);
+        switch(weather){
+        case 1:type=5;break; 
+        case 2:type=6;break; 
+        case 3:type=7;break; 
+        case 4:type=8;break; 
+        }
+        ConfigurePlainSpectrumWifiPhy (spectrumWifiPhy,FriisPlainlossModel,frequencyGHz*type,rxSensitivity, antennas, maxTxSpatialStreams, maxRxSpatialStreams, txGain, rxGain,
                                     rxNoiseFigure,txPowerStart,txPowerEnd);    
     }
     if(place==2){
-    frequencyGHz = 100e6*8;
-    Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel>();
-    spectrumChannel->AddPropagationLossModel(FriisMountainlossModel);
-    spectrumChannel->AddPropagationLossModel(NakagamiMountainlossModel);
-    Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel>();
-    spectrumChannel->SetPropagationDelayModel(delayModel);
-    spectrumWifiPhy.SetChannel(spectrumChannel);
-    switch(weather){
-    case 1:type=0;break; 
-    case 2:type=0.1;break; 
-    case 3:type=0.12;break; 
-    case 4:type=0.15;break; 
-    }
-    ConfigureMountainSpectrumWifiPhy (spectrumWifiPhy,FriisMountainlossModel,NakagamiMountainlossModel,txPowerStart,txPowerEnd,m0-type, m1-type, m2-type, antennas, txGain, rxGain,
+        frequencyGHz = 100e6*8;
+        Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel>();
+        spectrumChannel->AddPropagationLossModel(FriisMountainlossModel);
+        spectrumChannel->AddPropagationLossModel(NakagamiMountainlossModel);
+        Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel>();
+        spectrumChannel->SetPropagationDelayModel(delayModel);
+        spectrumWifiPhy.SetChannel(spectrumChannel);
+        switch(weather){
+        case 1:type=0;break; 
+        case 2:type=0.1;break; 
+        case 3:type=0.12;break; 
+        case 4:type=0.15;break; 
+        }
+        ConfigureMountainSpectrumWifiPhy (spectrumWifiPhy,FriisMountainlossModel,NakagamiMountainlossModel,txPowerStart,txPowerEnd,m0-type, m1-type, m2-type, antennas, txGain, rxGain,
                                     maxTxSpatialStreams,maxRxSpatialStreams,rxSensitivity,frequencyGHz,rxNoiseFigure);           
     }
     if(place==3){
-    Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel>();
-    spectrumChannel->AddPropagationLossModel(NakagamiCitylossModel);
-    spectrumChannel->AddPropagationLossModel(LogDistanceCitylossModel);
-    Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel>();
-    spectrumChannel->SetPropagationDelayModel(delayModel);
-    spectrumWifiPhy.SetChannel(spectrumChannel);
-    switch(weather){
-    case 1:type=0;break; 
-    case 2:type=3;break; 
-    case 3:type=6;break; 
-    case 4:type=7;break; 
-    }
-    ConfigureCitySpectrumWifiPhy (spectrumWifiPhy,LogDistanceCitylossModel,NakagamiCitylossModel,txPowerStart,txPowerEnd,m0, m1, m2, antennas, txGain, rxGain,
+        Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel>();
+        spectrumChannel->AddPropagationLossModel(NakagamiCitylossModel);
+        spectrumChannel->AddPropagationLossModel(LogDistanceCitylossModel);
+        Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel>();
+        spectrumChannel->SetPropagationDelayModel(delayModel);
+        spectrumWifiPhy.SetChannel(spectrumChannel);
+        switch(weather){
+        case 1:type=0;break; 
+        case 2:type=3;break; 
+        case 3:type=6;break; 
+        case 4:type=7;break; 
+        }
+        ConfigureCitySpectrumWifiPhy (spectrumWifiPhy,LogDistanceCitylossModel,NakagamiCitylossModel,txPowerStart,txPowerEnd,m0, m1, m2, antennas, txGain, rxGain,
                                     maxTxSpatialStreams,maxRxSpatialStreams,rxSensitivity,referenceLoss+type,referenceDistance,pathLossExponent);           
     }
     if(place==4){
-    Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel>();
-    spectrumChannel->AddPropagationLossModel(NakagamiForestlossModel);
-    spectrumChannel->AddPropagationLossModel(LogDistanceForestlossModel);
-    Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel>();
-    spectrumChannel->SetPropagationDelayModel(delayModel);
-    spectrumWifiPhy.SetChannel(spectrumChannel);
-    switch(weather){
-    case 1:type=0;break; 
-    case 2:type=2;break; 
-    case 3:type=5;break; 
-    case 4:type=6;break; 
-    }
-    ConfigureForestSpectrumWifiPhy (spectrumWifiPhy,LogDistanceForestlossModel,NakagamiForestlossModel,txPowerStart,txPowerEnd,m0, m1, m2, antennas, txGain, rxGain,
+        Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel>();
+        spectrumChannel->AddPropagationLossModel(NakagamiForestlossModel);
+        spectrumChannel->AddPropagationLossModel(LogDistanceForestlossModel);
+        Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel>();
+        spectrumChannel->SetPropagationDelayModel(delayModel);
+        spectrumWifiPhy.SetChannel(spectrumChannel);
+        switch(weather){
+        case 1:type=0;break; 
+        case 2:type=2;break; 
+        case 3:type=5;break; 
+        case 4:type=6;break; 
+        }
+        ConfigureForestSpectrumWifiPhy (spectrumWifiPhy,LogDistanceForestlossModel,NakagamiForestlossModel,txPowerStart,txPowerEnd,m0, m1, m2, antennas, txGain, rxGain,
                                     maxTxSpatialStreams,maxRxSpatialStreams,rxSensitivity,referenceLoss+type,referenceDistance,pathLossExponent);           
     }
-
     //创建MAC层助手,并设置为AD-Hoc模式
     // WifiMacHelper nodesWifiMac = CreateWifiMacHelper("ns3::AdhocWifiMac");
     // NetDeviceContainer nodeDevices = wifi.Install(nodesWifiPhy, nodesWifiMac, nodes);
@@ -1485,34 +1321,12 @@ int main (int argc, char *argv[])
     Ipv4AddressHelper address;
     address.SetBase("10.1.8.0","255.255.255.0");
     // Ipv4InterfaceContainer nodesInterfaces = address.Assign(nodeDevices);
-    Ipv4InterfaceContainer nodes0Interfaces = address.Assign(node0Devices);
-    Ipv4InterfaceContainer nodes1Interfaces = address.Assign(node1Devices);
-    Ipv4InterfaceContainer nodes2Interfaces = address.Assign(node2Devices);
-    Ipv4InterfaceContainer nodes3Interfaces = address.Assign(node3Devices);
-    Ipv4InterfaceContainer nodes4Interfaces = address.Assign(node4Devices);
-    Ipv4InterfaceContainer nodes5Interfaces = address.Assign(node5Devices);
-    Ipv4InterfaceContainer nodes6Interfaces = address.Assign(node6Devices);
-    Ipv4InterfaceContainer nodes7Interfaces = address.Assign(node7Devices);
-    Ipv4InterfaceContainer nodes8Interfaces = address.Assign(node8Devices);
-    Ipv4InterfaceContainer nodes9Interfaces = address.Assign(node9Devices);
-    Ipv4InterfaceContainer nodes10Interfaces = address.Assign(node10Devices);
-    Ipv4InterfaceContainer nodes11Interfaces = address.Assign(node11Devices);
-    Ipv4InterfaceContainer nodes12Interfaces = address.Assign(node12Devices);
-    Ipv4InterfaceContainer nodes13Interfaces = address.Assign(node13Devices);
-    Ipv4InterfaceContainer nodes14Interfaces = address.Assign(node14Devices);
-    Ipv4InterfaceContainer nodes15Interfaces = address.Assign(node15Devices);
-    Ipv4InterfaceContainer nodes16Interfaces = address.Assign(node16Devices);
-    Ipv4InterfaceContainer nodes17Interfaces = address.Assign(node17Devices);
-    Ipv4InterfaceContainer nodes18Interfaces = address.Assign(node18Devices);
-    Ipv4InterfaceContainer nodes19Interfaces = address.Assign(node19Devices);
-    Ipv4InterfaceContainer nodes20Interfaces = address.Assign(node20Devices);
-    Ipv4InterfaceContainer nodes21Interfaces = address.Assign(node21Devices);
-    Ipv4InterfaceContainer nodes22Interfaces = address.Assign(node22Devices);
-    Ipv4InterfaceContainer nodes23Interfaces = address.Assign(node23Devices);
-    Ipv4InterfaceContainer nodes24Interfaces = address.Assign(node24Devices);
-    Ipv4InterfaceContainer nodes25Interfaces = address.Assign(node25Devices);
-    Ipv4InterfaceContainer nodes26Interfaces = address.Assign(node26Devices);
-    Ipv4InterfaceContainer nodes27Interfaces = address.Assign(node27Devices);
+    const int NUM_INTERFACES = 28;
+    Ipv4InterfaceContainer nodesInterfaces[NUM_INTERFACES];
+    for(int i=0;i<28;i++)
+    {
+        nodesInterfaces[i] = address.Assign(nodeDevices[i]);
+    }
 
 /*
     Time printInterval = Seconds(30);
