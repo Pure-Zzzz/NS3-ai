@@ -42,11 +42,11 @@ msgInterface = exp.run(show_output=True)
 
 
 # 导入agent，预训练1000个epoch
-nb_episode = 1000
-my_rl_env = MyRLEnvironment(nb_episode=nb_episode)
-my_rl_env.train()
-agent = my_rl_env.get_agent_instance()
-time.sleep(1)
+# nb_episode = 1000
+# my_rl_env = MyRLEnvironment(nb_episode=nb_episode)
+# my_rl_env.train()
+# agent = my_rl_env.get_agent_instance()
+# time.sleep(1)
 
 
 
@@ -63,7 +63,7 @@ try:
         print('python结束接受')
         msgInterface.PyRecvEnd()
 
-        action = agent.act()
+        # action = agent.act()
 
         # send to C++ side
         msgInterface.PySendBegin()

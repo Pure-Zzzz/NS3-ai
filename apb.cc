@@ -40,6 +40,7 @@ uint32_t txPower = 0;
 Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>* msgInterface;
 std::vector<Bands> allBands;
 Ptr<SpectrumModel> SpectrumInter; 
+uint32_t i = 0;
 // 创建一个新的类，该类继承自 Object
 class ComplexData : public Object {
 public:
@@ -556,9 +557,6 @@ WifiHelper CreateWifiHelper(WifiStandard standard){
 }
 
 
-
-
-
 void SetMobilityModelRandomWalk2d(MobilityHelper& mobilityModel)
 {
     mobilityModel.SetMobilityModel("ns3::RandomWalk2dMobilityModel",
@@ -952,7 +950,8 @@ void ChangeChannel(Ptr<Node> node, uint16_t channelId) {
     Ptr<SpectrumWifiPhy> spectrumPhy = DynamicCast<SpectrumWifiPhy>(wifiDevice->GetPhy());
     cout << "执行ChangeChannel" << endl;
     spectrumPhy->SetAttribute("ChannelSettings",StringValue(std::string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}")));
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    
+    // std::this_thread::sleep_for(std::chrono::seconds(5));
     // spectrumPhy->SetAttribute("ChannelSettings",StringValue(std::string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}")));
     // if(spectrumPhy->IsStateIdle())
     //     spectrumPhy->SetAttribute("ChannelSettings",StringValue(std::string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}"))); // 设置新的频道号
@@ -1012,33 +1011,40 @@ void MonitorSnifferRx (Ptr<Node> node, Ptr<const Packet> packet, uint16_t channe
     uint32_t id = modelidToId[modelId];
     if(snr < 16){
         cout << "SNR: " << snr << endl;
-        msgInterface->CppSendBegin();
-        std::cout << "第一次开始cppsend" << std::endl;
-        msgInterface->GetCpp2PyStruct()->id = id;
-        std::cout << "修改id" << id << std::endl;
-        msgInterface->CppSendEnd();
-        std::cout << "第一次结束cppsend" << std::endl;
+        // msgInterface->CppSendBegin();
+        // std::cout << "第一次开始cppsend" << std::endl;
+        // msgInterface->GetCpp2PyStruct()->id = id;
+        // std::cout << "修改id" << id << std::endl;
+        // msgInterface->CppSendEnd();
+        // std::cout << "第一次结束cppsend" << std::endl;
 
 
         // std::this_thread::sleep_for(std::chrono::seconds(2));
 
 
-        std::cout << " 正在调用python执行优化策略 " << std::endl;
-        msgInterface->CppRecvBegin();
-        std::cout << " 开始cppRecv " << std::endl;
-        // next_channel = msgInterface->GetPy2CppStruct()->next_channel;
-        txPower = msgInterface->GetPy2CppStruct()->next_power;
-        std::cout << " 收到改变的power为： "<< txPower << std::endl;
-        msgInterface->CppRecvEnd();
-        std::cout << " 结束cppRecv " << std::endl;
+        // std::cout << " 正在调用python执行优化策略 " << std::endl;
+        // msgInterface->CppRecvBegin();
+        // std::cout << " 开始cppRecv " << std::endl;
+        // // next_channel = msgInterface->GetPy2CppStruct()->next_channel;
+        // txPower = msgInterface->GetPy2CppStruct()->next_power;
+        // std::cout << " 收到改变的power为： "<< txPower << std::endl;
+        // msgInterface->CppRecvEnd();
+        // std::cout << " 结束cppRecv " << std::endl;
         SetTxPower(node, txPower);
         std::cout << "Set Power : " << txPower << std::endl;
+        // if(i==1 || i==3 || i==5){
         ChangeChannel(node, next_channel);
         std::cout << "Set Channel : "<< next_channel << std::endl;
+    // }
     }
 
-
+    
+        
     Simulator::Schedule(Seconds(0.0),&dataActiviatyInfoFile,tempNodes,ref(dataActiviaty));
+    std::cout << "MonitorSnifferRx : Finished" << std::endl;
+
+    
+    i++;
 }
 
 void PrintRoutingTable(std::string filePath, Time printInterval) {
@@ -1054,6 +1060,14 @@ void PrintRoutingTable(std::string filePath, Time printInterval) {
 
 int main (int argc, char *argv[])
 {
+    LogComponentEnable("SpectrumWifiPhy", LOG_LEVEL_DEBUG);
+    LogComponentEnable("SpectrumWifiPhy", LOG_FUNCTION);
+    LogComponentEnable("WifiPhyStateHelper", LOG_FUNCTION);
+    LogComponentEnable("WifiPhyStateHelper", LOG_LEVEL_DEBUG);
+    LogComponentEnable("WifiPhy", LOG_FUNCTION);
+    LogComponentEnable("WifiPhy", LOG_LEVEL_DEBUG);
+    LogComponentEnable("PhyEntity", LOG_LEVEL_DEBUG);
+    // PhyEntity
        //创建interface实例
     auto interface = Ns3AiMsgInterface::Get();
     interface->SetIsMemoryCreator(false);
@@ -1407,7 +1421,6 @@ int main (int argc, char *argv[])
 
     //创建MAC层助手,并设置为AD-Hoc模式
     // WifiMacHelper nodesWifiMac = CreateWifiMacHelper("ns3::AdhocWifiMac");
-
     // NetDeviceContainer nodeDevices = wifi.Install(nodesWifiPhy, nodesWifiMac, nodes);
     //     // 2.4GHz WiFi频段的起始频率
     // double startFrequency = 2412e6;
@@ -1425,7 +1438,6 @@ int main (int argc, char *argv[])
     //     // 将每个 Band 添加到 allBands 中
     //     allBands.push_back(band);
     // }
-
     // SpectrumInter = Create<SpectrumModel>(allBands[0]);
     // double waveformPower = 0.015;
     // Ptr<SpectrumValue> wgPsd =
