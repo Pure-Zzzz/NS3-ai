@@ -11,3 +11,6 @@
 *.rar
 *.7z
 *.rar
+*.gz
+*.tar
+*.tar.gz

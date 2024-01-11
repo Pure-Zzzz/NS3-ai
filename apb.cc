@@ -35,8 +35,8 @@
 #include "ns3/waveform-generator-helper.h"
 using namespace ns3;
 using namespace std;
-uint16_t next_channel = 10;
-uint32_t txPower = 0;
+uint16_t next_channel = 5;
+uint32_t txPower = 100;
 Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>* msgInterface;
 std::vector<Bands> allBands;
 Ptr<SpectrumModel> SpectrumInter; 
@@ -945,46 +945,32 @@ void ConfigureForestSpectrumWifiPhy(SpectrumWifiPhyHelper& spectrumWifiPhy,Ptr<L
     spectrumWifiPhy.Set("TxPowerEnd", DoubleValue(txPowerEnd));
     }
 
-void ChangeChannel(Ptr<Node> node, uint16_t channelId) {
+void ChangeChannel(Ptr<Node> node, uint32_t id) {
     Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0)); // 获取节点的 WiFi 设备
     Ptr<SpectrumWifiPhy> spectrumPhy = DynamicCast<SpectrumWifiPhy>(wifiDevice->GetPhy());
-    cout << "执行ChangeChannel" << endl;
-    spectrumPhy->SetAttribute("ChannelSettings",StringValue(std::string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}")));
-    
-    // std::this_thread::sleep_for(std::chrono::seconds(5));
-    // spectrumPhy->SetAttribute("ChannelSettings",StringValue(std::string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}")));
-    // if(spectrumPhy->IsStateIdle())
-    //     spectrumPhy->SetAttribute("ChannelSettings",StringValue(std::string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}"))); // 设置新的频道号
-    // else
-    //     std::cout << "当前设备忙，无法切换信道" << std::endl;
-    // spectrumPhy->SetAttribute("ChannelSettings",StringValue(std::string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}")));
-    // std::cout << "spectrumPhy->IsStateRx(): "<< spectrumPhy->IsStateRx() << "  spectrumPhy->IsStateTx(): "<< spectrumPhy->IsStateTx() << std::endl;
-    // std::cout << "spectrumPhy->IsStateIdle(): "<< spectrumPhy->IsStateIdle() << "  spectrumPhy->IsStateCcaBusy(): "<< spectrumPhy->IsStateCcaBusy() << std::endl;
-    // // std::cout << spectrumPhy->GetState() << std::endl;
-    // if (!spectrumPhy->IsStateIdle() || !spectrumPhy->IsStateCcaBusy()) {
-    //     std::cout << "当前设备忙，无法切换信道" << std::endl;
-    // }else{
-    //     spectrumPhy->SetAttribute("ChannelSettings",StringValue(std::string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}"))); // 设置新的频道号
-    //     std::cout << "切换信道中,下一个信道:"<< channelId << std::endl;
-    // }
-    // if(spectrumPhy->IsStateIdle()){
-    //     spectrumPhy->SetAttribute("ChannelSettings",StringValue(std::string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}"))); // 设置新的频道号
-    //     std::cout << "切换信道中,下一个信道:"<< channelId << std::endl;
-    // }else{
-    //     std::cout << "当前设备忙，无法切换信道" << std::endl;
-    // }
-    // // std::cout << spectrumPhy->IsStateIdle() << std::endl;
-    // Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0)); // 假设 WiFi 设备在第一个设备接口上
-    // Ptr<SpectrumWifiPhy> spectrumPhy = DynamicCast<SpectrumWifiPhy>(wifiDevice->GetPhy());
+    msgInterface->CppSendBegin();
+    // std::cout << "第一次开始cppsend" << std::endl;
+    msgInterface->GetCpp2PyStruct()->id = id;
+    // std::cout << "修改id" << id << std::endl;
+    msgInterface->CppSendEnd();
+    // std::cout << "第一次结束cppsend" << std::endl;
 
-
-
+    // std::cout << " 正在调用python执行优化策略 " << std::endl;
+    msgInterface->CppRecvBegin();
+    // std::cout << " 开始cppRecv " << std::endl;
+    next_channel = msgInterface->GetPy2CppStruct()->next_channel;
+    txPower = msgInterface->GetPy2CppStruct()->next_power;
+    // std::cout << " 收到改变的power为： "<< txPower << std::endl;
+    msgInterface->CppRecvEnd();
+    // std::cout << " 结束cppRecv " << std::endl;
+    if(!spectrumPhy->IsStateSwitching() && next_channel!=spectrumPhy->GetChannelNumber()){
+    SetTxPower(node, txPower);
+    std::cout << "Set Power : " << txPower << std::endl;
+    std::cout << "------------------------------Set Channel : "<< next_channel << "------------------------------" << std::endl;
+    spectrumPhy->SetAttribute("ChannelSettings",StringValue(std::string("{" + std::to_string(next_channel) +", 20, BAND_2_4GHZ, 0}")));
+    // cout << "执行ChangeChannel" << endl;
+    // cout << "执行GetChannelNumber" << spectrumPhy->GetChannelNumber() << endl;
 }
-void ChangeAllNodesChannel(NodeContainer nodes, uint16_t channelId) {
-    for (NodeContainer::Iterator i = nodes.Begin(); i != nodes.End(); ++i) {
-        Ptr<Node> node = (*i);
-        ChangeChannel(node, channelId);
-    }
 }
 
 void ConfigureNode(int nodeId, double type, SpectrumWifiPhyHelper& spectrumWifiPhy, WifiMacHelper& nodeswifiMac, NodeContainer& nodes,Ptr<FriisPropagationLossModel>& FriislossModeldouble,
@@ -1022,45 +1008,18 @@ void MonitorSnifferRx (Ptr<Node> node, Ptr<const Packet> packet, uint16_t channe
     datatemp.status = 1;
     datatemp.snr = snr;
     datatemp.mcs = txVector.GetMode();
-    
+
     string modelId = FindIdFromMap(node);
     uint32_t id = modelidToId[modelId];
-    if(snr < 16){
+
+    Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0)); // 获取节点的 WiFi 设备
+    Ptr<SpectrumWifiPhy> spectrumPhy = DynamicCast<SpectrumWifiPhy>(wifiDevice->GetPhy());
+    if(snr < 16 ){
         cout << "SNR: " << snr << endl;
-        // msgInterface->CppSendBegin();
-        // std::cout << "第一次开始cppsend" << std::endl;
-        // msgInterface->GetCpp2PyStruct()->id = id;
-        // std::cout << "修改id" << id << std::endl;
-        // msgInterface->CppSendEnd();
-        // std::cout << "第一次结束cppsend" << std::endl;
-
-
-        // std::this_thread::sleep_for(std::chrono::seconds(2));
-
-
-        // std::cout << " 正在调用python执行优化策略 " << std::endl;
-        // msgInterface->CppRecvBegin();
-        // std::cout << " 开始cppRecv " << std::endl;
-        // // next_channel = msgInterface->GetPy2CppStruct()->next_channel;
-        // txPower = msgInterface->GetPy2CppStruct()->next_power;
-        // std::cout << " 收到改变的power为： "<< txPower << std::endl;
-        // msgInterface->CppRecvEnd();
-        // std::cout << " 结束cppRecv " << std::endl;
-        SetTxPower(node, txPower);
-        std::cout << "Set Power : " << txPower << std::endl;
-        // if(i==1 || i==3 || i==5){
-        ChangeChannel(node, next_channel);
-        std::cout << "Set Channel : "<< next_channel << std::endl;
-    // }
+        Simulator::Schedule(MilliSeconds(10), &ChangeChannel, node, id);
     }
-
-    
-        
     Simulator::Schedule(Seconds(0.0),&dataActiviatyInfoFile,tempNodes,ref(dataActiviaty));
-    std::cout << "MonitorSnifferRx : Finished" << std::endl;
-
-    
-    i++;
+    // std::cout << "MonitorSnifferRx : Finished" << std::endl;
 }
 
 void PrintRoutingTable(std::string filePath, Time printInterval) {
@@ -1076,13 +1035,16 @@ void PrintRoutingTable(std::string filePath, Time printInterval) {
 
 int main (int argc, char *argv[])
 {
-    LogComponentEnable("SpectrumWifiPhy", LOG_LEVEL_DEBUG);
-    LogComponentEnable("SpectrumWifiPhy", LOG_FUNCTION);
-    LogComponentEnable("WifiPhyStateHelper", LOG_FUNCTION);
-    LogComponentEnable("WifiPhyStateHelper", LOG_LEVEL_DEBUG);
-    LogComponentEnable("WifiPhy", LOG_FUNCTION);
-    LogComponentEnable("WifiPhy", LOG_LEVEL_DEBUG);
-    LogComponentEnable("PhyEntity", LOG_LEVEL_DEBUG);
+    // LogComponentEnable("SpectrumWifiPhy", LOG_LEVEL_DEBUG);
+    // LogComponentEnable("SpectrumWifiPhy", LOG_FUNCTION);
+    // LogComponentEnable("WifiPhyStateHelper", LOG_FUNCTION);
+    // LogComponentEnable("WifiPhyStateHelper", LOG_LEVEL_DEBUG);
+    // LogComponentEnable("WifiPhy", LOG_FUNCTION);
+    // LogComponentEnable("WifiPhy", LOG_LEVEL_DEBUG);
+    // LogComponentEnable("PhyEntity", LOG_LEVEL_DEBUG);
+    // LogComponentEnable("SpectrumWifiHelper", LOG_LEVEL_DEBUG);
+    // LogComponentEnable("SpectrumWifiHelper", LOG_FUNCTION);
+    
     // PhyEntity
        //创建interface实例
     auto interface = Ns3AiMsgInterface::Get();
@@ -1115,7 +1077,7 @@ int main (int argc, char *argv[])
     // GlobalValue::Bind ("ChecksumEnabled", BooleanValue (true));
 
     //创建节点数量
-    NodeContainer nodes = CreateNode(28);
+    nodes = CreateNode(28);
     
     //设置wifi的标准
     WifiStandard standard = WIFI_STANDARD_80211n;
