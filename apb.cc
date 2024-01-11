@@ -340,7 +340,7 @@ void AddPosition(int &i, Data d, Ptr<ListPositionAllocator> positionAlloc,NodeCo
     double x = stod(d.col10);
     double y = stod(d.col11);
     double z = stod(d.col12);
-    positionAlloc->Add(Vector(x/10.0, y/10.0, z/10.0));
+    positionAlloc->Add(Vector(x/100.0, y/100.0, z/100.0));
     AddToMap(Nodes.Get(i),Nodename + ".Get(" + to_string(i) +")", d.col2, d.col1);
     i++;
 }
@@ -440,16 +440,10 @@ void LogJsonPosition(NodeContainer Nodes, ofstream& outputFile)
         outputFile << "\"NodeGroup\":\""<< FindFromGroupMap(FindIdFromMap(Nodes.Get(i))) <<"\",";
         outputFile << "\"NodeType\": \"" << nameToTypeMap[foundName] << "\", ";
         outputFile << "\"NodeName\": \"" << foundName << "\", ";
-        
-        // if((foundName != "red_commandPostNodes.Get(0)") && (foundName != "blue_commandPostNodes.Get(0)"))
-        // {
-            outputFile << "\"NodeTxPower\": \"" << NodePower(Nodes.Get(i)) << "dBm\", ";
-        // }
+        outputFile << "\"NodeTxPower\": \"" << NodePower(Nodes.Get(i)) << "dBm\", ";
 
-        // outputFile << "\"Position\": {\"x\": " << pos.x << ", \"y\": " << pos.y << ", \"z\": " << pos.z << "}, ";
-        // XYZ2LLA((pos.x*100)-1210135.1685510000,(pos.y*100)+5045472.0347960000,(pos.z*100)+3700382.7212280000,X,Y,Z);//以第一个红色士兵节点为原点并且将坐标等比缩小了100倍
-        // XYZ2LLA((pos.x)-1210135.1685510000,(pos.y)+5045472.0347960000,(pos.z)+3700382.7212280000,X,Y,Z);//以第一个红色士兵节点为原点
-        XYZ2LLA(pos.x*10,pos.y*10,pos.z*10,X,Y,Z);//直接采用原始未经处理的地理坐标转换的笛卡尔坐标系坐标
+
+        XYZ2LLA(pos.x*100,pos.y*100,pos.z*100,X,Y,Z);//直接采用原始未经处理的地理坐标转换的笛卡尔坐标系坐标
         outputFile << "\"Position\": {\"x\": "  << fixed << setprecision(6)<< X << ", \"y\": " << Y << ", \"z\": " << Z << "}, ";//输出地理坐标
         outputFile.unsetf(ios_base::fixed);
         outputFile.precision(streamsize(-1));
@@ -504,8 +498,6 @@ void ModifyJsonFile(std::fstream& file) {
     }
 }
 
-
-
 //根据节点找传输功率
 double NodePower(Ptr<Node> node){
     Ptr<NetDevice> dev = node->GetDevice(0); 
@@ -542,8 +534,6 @@ DataRow parseLine(const string &line) {
     return data;
 }
 
-
-
 NodeContainer CreateNode(int number){
     NodeContainer nodes;
     nodes.Create(number);
@@ -555,7 +545,6 @@ WifiHelper CreateWifiHelper(WifiStandard standard){
     wifi.SetStandard(standard);
     return wifi;
 }
-
 
 void SetMobilityModelRandomWalk2d(MobilityHelper& mobilityModel)
 {
@@ -628,7 +617,6 @@ void stopDataActiviatyInfo(){
     Simulator::Schedule(Seconds(25.0), &stopDataActiviatyInfo);
 }
 
-
 void dataActiviatyInfoFile(NodeContainer Nodes, ofstream& outputFile){
 //处理收到数据包数据   
     if(activiaty == 1){
@@ -656,7 +644,7 @@ void dataActiviatyInfoFile(NodeContainer Nodes, ofstream& outputFile){
             
             outputFile << "\"NodeTxPower\": \"" << NodePower(node) << "dBm\", ";
 
-            XYZ2LLA(pos.x*10,pos.y*10,pos.z*10,X,Y,Z);//直接采用原始未经处理的地理坐标转换的笛卡尔坐标系坐标
+            XYZ2LLA(pos.x*100,pos.y*100,pos.z*100,X,Y,Z);//直接采用原始未经处理的地理坐标转换的笛卡尔坐标系坐标
             outputFile << "\"Position\": {\"x\": "  << fixed << setprecision(6)<< X << ", \"y\": " << Y << ", \"z\": " << Z << "}, ";//输出地理坐标
             outputFile.unsetf(ios_base::fixed);
             outputFile.precision(streamsize(-1));
@@ -700,7 +688,7 @@ void dataActiviatyInfoFile(NodeContainer Nodes, ofstream& outputFile){
                 outputFile << "\"NodeSpeed\": \""  << "1m/s\", ";
                 outputFile << "\"NodeTxPower\": \"" << NodePower(Nodes.Get(i)) << "dBm\", ";
 
-                XYZ2LLA(pos.x*10,pos.y*10,pos.z*10,X,Y,Z);//直接采用原始未经处理的地理坐标转换的笛卡尔坐标系坐标
+                XYZ2LLA(pos.x*100,pos.y*100,pos.z*100,X,Y,Z);//直接采用原始未经处理的地理坐标转换的笛卡尔坐标系坐标
                 outputFile << "\"Position\": {\"x\": "  << fixed << setprecision(6)<< X << ", \"y\": " << Y << ", \"z\": " << Z << "}, ";//输出地理坐标
                 outputFile.unsetf(ios_base::fixed);
                 outputFile.precision(streamsize(-1));
@@ -884,7 +872,6 @@ void ConfigureMountainSpectrumWifiPhy(SpectrumWifiPhyHelper& spectrumWifiPhy, Pt
     //spectrumWifiPhy.Set("ChannelSettings",StringValue(std::string("{") + (frequency == 5180 ? "36" : "38")+", 0, BAND_5GHZ, 0}")); 
     }
 
-    
 void ConfigureCitySpectrumWifiPhy(SpectrumWifiPhyHelper& spectrumWifiPhy,Ptr<LogDistancePropagationLossModel>& LogDistancelossModeldouble,Ptr<NakagamiPropagationLossModel>&NakagamilossModeldouble,
    double txPowerStart,double txPowerEnd, double m0, double m1, double m2,double Antennas,double txGain, double rxGain,
 double MaxSupportedTxSpatialStreams,double MaxSupportedRxSpatialStreams,double RxSensitivity,double referenceLoss,double referenceDistance,double pathLossExponent) {
@@ -915,7 +902,6 @@ double MaxSupportedTxSpatialStreams,double MaxSupportedRxSpatialStreams,double R
     
     }
 
-
 void ConfigureForestSpectrumWifiPhy(SpectrumWifiPhyHelper& spectrumWifiPhy,Ptr<LogDistancePropagationLossModel>& LogDistancelossModeldouble,Ptr<NakagamiPropagationLossModel>&NakagamilossModeldouble,
    double txPowerStart,double txPowerEnd, double m0, double m1, double m2,double Antennas,double txGain, double rxGain,
     double MaxSupportedTxSpatialStreams,double MaxSupportedRxSpatialStreams,double RxSensitivity,double referenceLoss,double referenceDistance,double pathLossExponent) {
@@ -945,32 +931,69 @@ void ConfigureForestSpectrumWifiPhy(SpectrumWifiPhyHelper& spectrumWifiPhy,Ptr<L
     spectrumWifiPhy.Set("TxPowerEnd", DoubleValue(txPowerEnd));
     }
 
+void ChangeMobilityModel(Ptr<Node> node,MobilityHelper&mobility,double speed,double time) {
+    // 定义新的移动模型，例如随机方向模型
+    double constantValue = speed;
+  mobility.SetMobilityModel("ns3::RandomWalk2dMobilityModel",
+    "Bounds", RectangleValue(Rectangle(-2000000, 2000000, -6000000, 6000000)),
+            //    "Distance", DoubleValue(10/100.0),
+                "Mode", StringValue("Time"),
+        "Time", TimeValue(Seconds(time)),
+                "Speed", StringValue("ns3::ConstantRandomVariable[Constant=" + std::to_string(constantValue) + "]"));
+    mobility.Install(node);
+}
+
+void ChangeSingleNodeDataRate(Ptr<Node> node, std::string dataRate) {
+    // 获取指定节点上的 Wi-Fi 网络设备
+    Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0));
+    NS_ASSERT(wifiDevice != nullptr); // 确保设备确实是 Wi-Fi 设备
+
+    // 获取 Remote Station Manager
+    Ptr<WifiRemoteStationManager> stationManager = wifiDevice->GetRemoteStationManager();
+    NS_ASSERT(stationManager->GetInstanceTypeId() == ConstantRateWifiManager::GetTypeId());
+
+    // 将 Remote Station Manager 强制转换为 ConstantRateWifiManager
+    Ptr<ConstantRateWifiManager> constantRateManager = DynamicCast<ConstantRateWifiManager>(stationManager);
+
+    // 设置新的速率
+    constantRateManager->SetAttribute("DataMode", StringValue(dataRate));
+    constantRateManager->SetAttribute("ControlMode", StringValue(dataRate));
+}
+
+void ChangeAntennas(Ptr<Node> node, uint32_t newAntennaCount,double txGain,double rxGain,
+    int MaxSupportedTxSpatialStreams,int MaxSupportedRxSpatialStreams,int RxSensitivity ) {
+    // 假设节点上的第一个设备是WifiNetDevice
+    Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0));
+    if (wifiDevice != nullptr) {
+        // 获取WifiPhy对象
+        Ptr<WifiPhy> wifiPhy = wifiDevice->GetPhy();
+        // 改变天线数量
+        wifiPhy->SetAttribute("Antennas", UintegerValue(newAntennaCount));
+        wifiPhy->SetAttribute("TxGain", DoubleValue(txGain));  // 设置发射天线增益
+        wifiPhy->SetAttribute("RxGain", DoubleValue(rxGain));  // 设置接收天线增益
+        wifiPhy->SetAttribute("MaxSupportedTxSpatialStreams", UintegerValue(MaxSupportedTxSpatialStreams)); //设备支持的最大传输空间流的数量。
+        wifiPhy->SetAttribute("MaxSupportedRxSpatialStreams", UintegerValue(MaxSupportedRxSpatialStreams));//设备支持的最大接收空间流的数量。
+        wifiPhy->SetAttribute("RxSensitivity", DoubleValue(RxSensitivity));//设备接受灵敏度
+    }
+}
+
+
 void ChangeChannel(Ptr<Node> node, uint32_t id) {
     Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0)); // 获取节点的 WiFi 设备
     Ptr<SpectrumWifiPhy> spectrumPhy = DynamicCast<SpectrumWifiPhy>(wifiDevice->GetPhy());
     msgInterface->CppSendBegin();
-    // std::cout << "第一次开始cppsend" << std::endl;
     msgInterface->GetCpp2PyStruct()->id = id;
-    // std::cout << "修改id" << id << std::endl;
     msgInterface->CppSendEnd();
-    // std::cout << "第一次结束cppsend" << std::endl;
 
-    // std::cout << " 正在调用python执行优化策略 " << std::endl;
     msgInterface->CppRecvBegin();
-    // std::cout << " 开始cppRecv " << std::endl;
     next_channel = msgInterface->GetPy2CppStruct()->next_channel;
     txPower = msgInterface->GetPy2CppStruct()->next_power;
-    // std::cout << " 收到改变的power为： "<< txPower << std::endl;
     msgInterface->CppRecvEnd();
-    // std::cout << " 结束cppRecv " << std::endl;
-    if(!spectrumPhy->IsStateSwitching() && next_channel!=spectrumPhy->GetChannelNumber()){
-    SetTxPower(node, txPower);
-    std::cout << "Set Power : " << txPower << std::endl;
-    std::cout << "------------------------------Set Channel : "<< next_channel << "------------------------------" << std::endl;
-    spectrumPhy->SetAttribute("ChannelSettings",StringValue(std::string("{" + std::to_string(next_channel) +", 20, BAND_2_4GHZ, 0}")));
-    // cout << "执行ChangeChannel" << endl;
-    // cout << "执行GetChannelNumber" << spectrumPhy->GetChannelNumber() << endl;
-}
+
+    if( !spectrumPhy->IsStateSwitching() && next_channel != spectrumPhy->GetChannelNumber()){
+        SetTxPower(node, txPower);
+        spectrumPhy->SetAttribute("ChannelSettings",StringValue(std::string("{" + std::to_string(next_channel) +", 20, BAND_2_4GHZ, 0}")));
+    }
 }
 
 void ConfigureNode(int nodeId, double type, SpectrumWifiPhyHelper& spectrumWifiPhy, WifiMacHelper& nodeswifiMac, NodeContainer& nodes,Ptr<FriisPropagationLossModel>& FriislossModeldouble,
@@ -1016,22 +1039,11 @@ void MonitorSnifferRx (Ptr<Node> node, Ptr<const Packet> packet, uint16_t channe
     Ptr<SpectrumWifiPhy> spectrumPhy = DynamicCast<SpectrumWifiPhy>(wifiDevice->GetPhy());
     if(snr < 16 ){
         cout << "SNR: " << snr << endl;
-        Simulator::Schedule(MilliSeconds(10), &ChangeChannel, node, id);
+        Simulator::Schedule(MilliSeconds(10), &ChangeSingleNodeDataRate, node, "HtMcs7");
     }
     Simulator::Schedule(Seconds(0.0),&dataActiviatyInfoFile,tempNodes,ref(dataActiviaty));
-    // std::cout << "MonitorSnifferRx : Finished" << std::endl;
 }
 
-void PrintRoutingTable(std::string filePath, Time printInterval) {
-    // 创建新的 OutputStreamWrapper 对象以覆盖原有文件
-    Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper>(filePath, ios::app);
-
-    // 打印当前时刻的路由表
-    Ipv4RoutingHelper::PrintRoutingTableAllAt(Simulator::Now(), routingStream);
-
-    // 安排下一次打印
-    Simulator::Schedule(printInterval, &PrintRoutingTable, filePath, printInterval);
-}
 
 int main (int argc, char *argv[])
 {
@@ -1271,7 +1283,7 @@ int main (int argc, char *argv[])
 
     mobility.SetMobilityModel("ns3::RandomWalk2dMobilityModel",
                                 "Bounds", RectangleValue(Rectangle(-20000000, 20000000, -60000000, 60000000)),
-                               "Distance", DoubleValue(10/10.0),
+                               "Distance", DoubleValue(10/100.0),
                                "Time", TimeValue(Seconds(1)));
     mobility.Install (nodes);
 
@@ -1290,13 +1302,6 @@ int main (int argc, char *argv[])
         nodesInterfaces[i] = address.Assign(nodeDevices[i]);
     }
 
-/*
-    Time printInterval = Seconds(30);
-    string filePath = "./scratch/aodv.routes";
-
-    // 在初次延迟后开始打印路由表
-    Simulator::Schedule(printInterval, &PrintRoutingTable, filePath, printInterval);
-*/
 
     for (uint16_t i = 0; i < nodes.GetN(); i++){
         string modelId = FindIdFromMap(nodes.Get(i));
