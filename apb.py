@@ -18,7 +18,8 @@
 #         Hao Yin <haoyin@uw.edu>
 #         Muyuan Shen <muyuan_shen@hust.edu.cn>
 
-
+import units
+from units import whichpower
 import ns3ai_apb_py_stru as py_binding
 from ns3ai_utils import Experiment
 import sys
@@ -32,10 +33,16 @@ import numpy as np
 import random
 import time
 from channel_power.train import MyRLEnvironment
+from DQN import DeepQAgent
+
+s = units.Soldier()
+mcs_c = s.mcs_choices
+
+
 #开启初始化
 # from env_init import env_init
 # env_init.run()
-
+agent = DeepQAgent()
 exp = Experiment("ns3ai_apb_msg_stru", "../../../../../", py_binding,
                  handleFinish=True)
 msgInterface = exp.run(show_output=True)
@@ -58,17 +65,33 @@ try:
         # cpp_act = msgInterface.GetCpp2PyStruct().cpp_action
         if msgInterface.PyGetFinished():
             break
-        id = msgInterface.GetCpp2PyStruct().id
-        print("id: {}".format(id))
-        print('python结束接受')
+        snr = msgInterface.GetCpp2PyStruct().snr
+        delay = msgInterface.GetCpp2PyStruct().delay
+        tput = msgInterface.GetCpp2PyStruct().tput
+        current_power = msgInterface.GetCpp2PyStruct().current_power
+        nodetype = msgInterface.GetCpp2PyStruct().nodetype
+        mcs = msgInterface.GetCpp2PyStruct().mcs
         msgInterface.PyRecvEnd()
-
-        # action = agent.act()
-
+        obs = [snr, delay, tput]
+        power_ch = whichpower(nodetype)
+        index = power_ch.index(current_power)
+        act = agent.get_action(obs)
+        if act[0]==1 and index+1<len(power_ch):
+            index+=1
+        elif act[0]==0 and index!=0:
+            index-=1
+        else:
+            index
+        if act[1]==1 and mcs!=7 and mcs!=-1:
+            mcs+=1
+        elif act[1]==0 and mcs!=0 and mcs!=-1:
+            mcs-=1
+        else:
+            mcs
         # send to C++ side
         msgInterface.PySendBegin()
-        msgInterface.GetPy2CppStruct().next_channel = 5
-        msgInterface.GetPy2CppStruct().next_power = 110
+        msgInterface.GetPy2CppStruct().next_power = power_ch[index]
+        msgInterface.GetPy2CppStruct().next_mcs = mcs
         msgInterface.PySendEnd()
 
 except Exception as e:

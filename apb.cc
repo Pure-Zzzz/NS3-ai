@@ -1037,9 +1037,10 @@ void MonitorSnifferRx (Ptr<Node> node, Ptr<const Packet> packet, uint16_t channe
 
     Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0)); // 获取节点的 WiFi 设备
     Ptr<SpectrumWifiPhy> spectrumPhy = DynamicCast<SpectrumWifiPhy>(wifiDevice->GetPhy());
-    if(snr < 16 ){
+    if(snr < 16 && snr > 15){
         cout << "SNR: " << snr << endl;
-        Simulator::Schedule(MilliSeconds(10), &ChangeSingleNodeDataRate, node, "HtMcs7");
+        Simulator::Schedule(MilliSeconds(10), &ChangeAntennas, node, uint32_t(2), 15.0, 15.0,2,2,110);
+        // ChangeAntennas(node, uint32_t(2), 15.0, 15.0,2,2,110);
     }
     Simulator::Schedule(Seconds(0.0),&dataActiviatyInfoFile,tempNodes,ref(dataActiviaty));
 }
