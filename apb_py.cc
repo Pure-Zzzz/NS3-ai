@@ -33,20 +33,19 @@ PYBIND11_MODULE(ns3ai_apb_py_stru, m)
         .def_readwrite("current_channel", &EnvStruct::current_channel)
         .def_readwrite("current_power", &EnvStruct::current_power)
         .def_readwrite("current_disturbed_channel", &EnvStruct::current_disturbed_channel)
-        .def_readwrite("current_snr", &EnvStruct::current_snr)
-        .def_readwrite("envtmp4", &EnvStruct::envtmp4)
-        .def_readwrite("envtmp3", &EnvStruct::envtmp3)
-        .def_readwrite("envtmp2", &EnvStruct::envtmp2)
         .def_readwrite("id", &EnvStruct::id)
-        .def_readwrite("cpp_action", &EnvStruct::cpp_action);
+        .def_readwrite("snr", &EnvStruct::snr)
+        .def_readwrite("delay", &EnvStruct::delay)
+        .def_readwrite("tput", &EnvStruct::tput)
+        .def_readwrite("terrain", &EnvStruct::terrain)
+        .def_readwrite("weather", &EnvStruct::weather)
+        .def_readwrite("mcs", &EnvStruct::mcs)
+        .def_readwrite("nodetype", &EnvStruct::nodetype);
 
     py::class_<ActStruct>(m, "PyActStruct").def(py::init<>())
         .def_readwrite("next_channel", &ActStruct::next_channel)
         .def_readwrite("next_power", &ActStruct::next_power)
-        .def_readwrite("acttmp1", &ActStruct::acttmp1)
-        .def_readwrite("acttmp2", &ActStruct::acttmp2)
-        .def_readwrite("acttmp3", &ActStruct::acttmp3)
-        .def_readwrite("acttmp4", &ActStruct::acttmp4);
+        .def_readwrite("next_mcs", &ActStruct::next_mcs);
 
     py::class_<ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>>(m, "Ns3AiMsgInterfaceImpl")
         .def(py::init<bool,

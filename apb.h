@@ -22,7 +22,7 @@
 #ifndef APB_H
 #define APB_H
 
-// #include <cstdint>
+#include <cstdint>
 // #include <string>
 // enum NodeType {
 //     SOLDIER = 0,
