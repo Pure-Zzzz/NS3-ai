@@ -1,12 +1,12 @@
 #ifndef APB_H
 #define APB_H
-
+#include <cstdint>
 struct EnvStruct
 {
     uint32_t current_channel;//当前信道
     uint32_t current_power;//当前功率
     uint32_t current_disturbed_channel;//当前干扰信道
-    uint32_t id;//
+    uint32_t id;//节点ID
     uint32_t delay;//总延时
     uint32_t tput;//总吞吐量
     float snr;//总信噪比

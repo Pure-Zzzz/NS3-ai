@@ -74,7 +74,7 @@ class DQN:
 //txgain（加，减）
 mcs（加，减）
 power（加，减）
-action=[rxgain,txgain,mcs,power]____(0,1)
+action=[mcs,power]____(0,1)
 --obs
 snr
 delay
@@ -114,6 +114,6 @@ class DeepQAgent:
                 self.dqn.learn()
 
         # choose action
-        self.a = self.dqn.choose_action(self.s_)
+        self.a = self.dqn.choose_action(self.s_) #选择一个动作的index
         
         return self.act[self.a]
