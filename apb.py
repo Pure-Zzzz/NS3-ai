@@ -53,14 +53,11 @@ msgInterface = exp.run(show_output=True)
 try:
     while True:
         # receive from C++ side
-        print('python开始接收')
         msgInterface.PyRecvBegin()
         # cpp_act = msgInterface.GetCpp2PyStruct().cpp_action
         if msgInterface.PyGetFinished():
             break
         id = msgInterface.GetCpp2PyStruct().id
-        print("id: {}".format(id))
-        print('python结束接受')
         msgInterface.PyRecvEnd()
 
         # action = agent.act()

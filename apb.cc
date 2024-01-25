@@ -33,6 +33,8 @@
 #include <thread>
 #include "ns3/multi-model-spectrum-channel.h"
 #include "ns3/waveform-generator-helper.h"
+#include "ns3/flow-monitor-helper.h"
+#include "ns3/flow-monitor.h"
 using namespace ns3;
 using namespace std;
 uint16_t next_channel = 5;
@@ -41,6 +43,8 @@ Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>* msgInterface;
 std::vector<Bands> allBands;
 Ptr<SpectrumModel> SpectrumInter; 
 uint32_t i = 0;
+
+
 // 创建一个新的类，该类继承自 Object
 class ComplexData : public Object {
 public:
@@ -340,7 +344,7 @@ void AddPosition(int &i, Data d, Ptr<ListPositionAllocator> positionAlloc,NodeCo
     double x = stod(d.col10);
     double y = stod(d.col11);
     double z = stod(d.col12);
-    positionAlloc->Add(Vector(x/10.0, y/10.0, z/10.0));
+    positionAlloc->Add(Vector(x/100.0, y/100.0, z/100.0));
     AddToMap(Nodes.Get(i),Nodename + ".Get(" + to_string(i) +")", d.col2, d.col1);
     i++;
 }
@@ -405,7 +409,7 @@ double NodeSensitivity(Ptr<Node> onenode){
 
     // 打印接收器灵敏度
     double rxSensitivity = phy->GetRxSensitivity ();
-    std::cout << "Rx Sensitivity of node " << FindIdFromMap(node) << " is " << rxSensitivity << " dBm" << std::endl;
+    // std::cout << "Rx Sensitivity of node " << FindIdFromMap(node) << " is " << rxSensitivity << " dBm" << std::endl;
 
     return rxSensitivity;
 }
@@ -440,16 +444,10 @@ void LogJsonPosition(NodeContainer Nodes, ofstream& outputFile)
         outputFile << "\"NodeGroup\":\""<< FindFromGroupMap(FindIdFromMap(Nodes.Get(i))) <<"\",";
         outputFile << "\"NodeType\": \"" << nameToTypeMap[foundName] << "\", ";
         outputFile << "\"NodeName\": \"" << foundName << "\", ";
-        
-        // if((foundName != "red_commandPostNodes.Get(0)") && (foundName != "blue_commandPostNodes.Get(0)"))
-        // {
-            outputFile << "\"NodeTxPower\": \"" << NodePower(Nodes.Get(i)) << "dBm\", ";
-        // }
+        outputFile << "\"NodeTxPower\": \"" << NodePower(Nodes.Get(i)) << "dBm\", ";
 
-        // outputFile << "\"Position\": {\"x\": " << pos.x << ", \"y\": " << pos.y << ", \"z\": " << pos.z << "}, ";
-        // XYZ2LLA((pos.x*100)-1210135.1685510000,(pos.y*100)+5045472.0347960000,(pos.z*100)+3700382.7212280000,X,Y,Z);//以第一个红色士兵节点为原点并且将坐标等比缩小了100倍
-        // XYZ2LLA((pos.x)-1210135.1685510000,(pos.y)+5045472.0347960000,(pos.z)+3700382.7212280000,X,Y,Z);//以第一个红色士兵节点为原点
-        XYZ2LLA(pos.x*10,pos.y*10,pos.z*10,X,Y,Z);//直接采用原始未经处理的地理坐标转换的笛卡尔坐标系坐标
+
+        XYZ2LLA(pos.x*100,pos.y*100,pos.z*100,X,Y,Z);//直接采用原始未经处理的地理坐标转换的笛卡尔坐标系坐标
         outputFile << "\"Position\": {\"x\": "  << fixed << setprecision(6)<< X << ", \"y\": " << Y << ", \"z\": " << Z << "}, ";//输出地理坐标
         outputFile.unsetf(ios_base::fixed);
         outputFile.precision(streamsize(-1));
@@ -504,8 +502,6 @@ void ModifyJsonFile(std::fstream& file) {
     }
 }
 
-
-
 //根据节点找传输功率
 double NodePower(Ptr<Node> node){
     Ptr<NetDevice> dev = node->GetDevice(0); 
@@ -542,8 +538,6 @@ DataRow parseLine(const string &line) {
     return data;
 }
 
-
-
 NodeContainer CreateNode(int number){
     NodeContainer nodes;
     nodes.Create(number);
@@ -555,7 +549,6 @@ WifiHelper CreateWifiHelper(WifiStandard standard){
     wifi.SetStandard(standard);
     return wifi;
 }
-
 
 void SetMobilityModelRandomWalk2d(MobilityHelper& mobilityModel)
 {
@@ -628,7 +621,6 @@ void stopDataActiviatyInfo(){
     Simulator::Schedule(Seconds(25.0), &stopDataActiviatyInfo);
 }
 
-
 void dataActiviatyInfoFile(NodeContainer Nodes, ofstream& outputFile){
 //处理收到数据包数据   
     if(activiaty == 1){
@@ -656,7 +648,7 @@ void dataActiviatyInfoFile(NodeContainer Nodes, ofstream& outputFile){
             
             outputFile << "\"NodeTxPower\": \"" << NodePower(node) << "dBm\", ";
 
-            XYZ2LLA(pos.x*10,pos.y*10,pos.z*10,X,Y,Z);//直接采用原始未经处理的地理坐标转换的笛卡尔坐标系坐标
+            XYZ2LLA(pos.x*100,pos.y*100,pos.z*100,X,Y,Z);//直接采用原始未经处理的地理坐标转换的笛卡尔坐标系坐标
             outputFile << "\"Position\": {\"x\": "  << fixed << setprecision(6)<< X << ", \"y\": " << Y << ", \"z\": " << Z << "}, ";//输出地理坐标
             outputFile.unsetf(ios_base::fixed);
             outputFile.precision(streamsize(-1));
@@ -700,7 +692,7 @@ void dataActiviatyInfoFile(NodeContainer Nodes, ofstream& outputFile){
                 outputFile << "\"NodeSpeed\": \""  << "1m/s\", ";
                 outputFile << "\"NodeTxPower\": \"" << NodePower(Nodes.Get(i)) << "dBm\", ";
 
-                XYZ2LLA(pos.x*10,pos.y*10,pos.z*10,X,Y,Z);//直接采用原始未经处理的地理坐标转换的笛卡尔坐标系坐标
+                XYZ2LLA(pos.x*100,pos.y*100,pos.z*100,X,Y,Z);//直接采用原始未经处理的地理坐标转换的笛卡尔坐标系坐标
                 outputFile << "\"Position\": {\"x\": "  << fixed << setprecision(6)<< X << ", \"y\": " << Y << ", \"z\": " << Z << "}, ";//输出地理坐标
                 outputFile.unsetf(ios_base::fixed);
                 outputFile.precision(streamsize(-1));
@@ -755,7 +747,7 @@ void ReceivePacket (std::string context, Ptr<const Packet> packet, const Address
         // 打印信息
         InetSocketAddress addr = InetSocketAddress::ConvertFrom (from);
         if(addr.GetIpv4 ()!=localAddr){
-            cout << "------------------------------------------------------This is data translate!------------------------------------------------------------" <<endl;
+            // cout << "------------------------------------------------------This is data translate!------------------------------------------------------------" <<endl;
             //DataInfoFile(FindFromMap(ipToIdMap[addr.GetIpv4 ()]), node, packet->GetSize(), timestamp, ref(dataputFile));
             DataInfoFile(FindFromMap(ipToIdMap[addr.GetIpv4()]), node, packet->GetSize(), timestamp, mediaTypeString, ref(dataputFile));
         }
@@ -827,6 +819,7 @@ void ConfigureWifi(WifiHelper &wifi, Ssid ssid, std::string dataRate)
     wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager",
                                           "DataMode", DataRate,
                                           "ControlMode", DataRate);
+    // wifi.SetRemoteStationManager("ns3::MinstrelHtWifiManager");
 }
 
 void ConfigurePlainSpectrumWifiPhy(SpectrumWifiPhyHelper& spectrumWifiPhy, Ptr<FriisPropagationLossModel>& lossModel,double frequency, double rxSensitivity, 
@@ -884,7 +877,6 @@ void ConfigureMountainSpectrumWifiPhy(SpectrumWifiPhyHelper& spectrumWifiPhy, Pt
     //spectrumWifiPhy.Set("ChannelSettings",StringValue(std::string("{") + (frequency == 5180 ? "36" : "38")+", 0, BAND_5GHZ, 0}")); 
     }
 
-    
 void ConfigureCitySpectrumWifiPhy(SpectrumWifiPhyHelper& spectrumWifiPhy,Ptr<LogDistancePropagationLossModel>& LogDistancelossModeldouble,Ptr<NakagamiPropagationLossModel>&NakagamilossModeldouble,
    double txPowerStart,double txPowerEnd, double m0, double m1, double m2,double Antennas,double txGain, double rxGain,
 double MaxSupportedTxSpatialStreams,double MaxSupportedRxSpatialStreams,double RxSensitivity,double referenceLoss,double referenceDistance,double pathLossExponent) {
@@ -915,7 +907,6 @@ double MaxSupportedTxSpatialStreams,double MaxSupportedRxSpatialStreams,double R
     
     }
 
-
 void ConfigureForestSpectrumWifiPhy(SpectrumWifiPhyHelper& spectrumWifiPhy,Ptr<LogDistancePropagationLossModel>& LogDistancelossModeldouble,Ptr<NakagamiPropagationLossModel>&NakagamilossModeldouble,
    double txPowerStart,double txPowerEnd, double m0, double m1, double m2,double Antennas,double txGain, double rxGain,
     double MaxSupportedTxSpatialStreams,double MaxSupportedRxSpatialStreams,double RxSensitivity,double referenceLoss,double referenceDistance,double pathLossExponent) {
@@ -945,32 +936,68 @@ void ConfigureForestSpectrumWifiPhy(SpectrumWifiPhyHelper& spectrumWifiPhy,Ptr<L
     spectrumWifiPhy.Set("TxPowerEnd", DoubleValue(txPowerEnd));
     }
 
+void ChangeMobilityModel(Ptr<Node> node,MobilityHelper&mobility,double speed,double time) {
+    // 定义新的移动模型，例如随机方向模型
+    double constantValue = speed;
+  mobility.SetMobilityModel("ns3::RandomWalk2dMobilityModel",
+    "Bounds", RectangleValue(Rectangle(-2000000, 2000000, -6000000, 6000000)),
+            //    "Distance", DoubleValue(10/100.0),
+                "Mode", StringValue("Time"),
+        "Time", TimeValue(Seconds(time)),
+                "Speed", StringValue("ns3::ConstantRandomVariable[Constant=" + std::to_string(constantValue) + "]"));
+    mobility.Install(node);
+}
+
+void ChangeSingleNodeDataRate(Ptr<Node> node, std::string dataRate) {
+    // 获取指定节点上的 Wi-Fi 网络设备
+    Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0));
+    NS_ASSERT(wifiDevice != nullptr); // 确保设备确实是 Wi-Fi 设备
+
+    // 获取 Remote Station Manager
+    Ptr<WifiRemoteStationManager> stationManager = wifiDevice->GetRemoteStationManager();
+    NS_ASSERT(stationManager->GetInstanceTypeId() == ConstantRateWifiManager::GetTypeId());
+
+    // 将 Remote Station Manager 强制转换为 ConstantRateWifiManager
+    Ptr<ConstantRateWifiManager> constantRateManager = DynamicCast<ConstantRateWifiManager>(stationManager);
+
+    // 设置新的速率
+    constantRateManager->SetAttribute("DataMode", StringValue(dataRate));
+    constantRateManager->SetAttribute("ControlMode", StringValue(dataRate));
+}
+
+void ChangeAntennas(Ptr<Node> node, uint32_t newAntennaCount,double txGain,double rxGain,
+    int MaxSupportedTxSpatialStreams,int MaxSupportedRxSpatialStreams,int RxSensitivity ) {
+    // 假设节点上的第一个设备是WifiNetDevice
+    Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0));
+    if (wifiDevice != nullptr) {
+        // 获取WifiPhy对象
+        Ptr<WifiPhy> wifiPhy = wifiDevice->GetPhy();
+        // 改变天线数量
+        wifiPhy->SetAttribute("Antennas", UintegerValue(newAntennaCount));
+        wifiPhy->SetAttribute("TxGain", DoubleValue(txGain));  // 设置发射天线增益
+        wifiPhy->SetAttribute("RxGain", DoubleValue(rxGain));  // 设置接收天线增益
+        wifiPhy->SetAttribute("MaxSupportedTxSpatialStreams", UintegerValue(MaxSupportedTxSpatialStreams)); //设备支持的最大传输空间流的数量。
+        wifiPhy->SetAttribute("MaxSupportedRxSpatialStreams", UintegerValue(MaxSupportedRxSpatialStreams));//设备支持的最大接收空间流的数量。
+        wifiPhy->SetAttribute("RxSensitivity", DoubleValue(RxSensitivity));//设备接受灵敏度
+    }
+}
+
 void ChangeChannel(Ptr<Node> node, uint32_t id) {
     Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0)); // 获取节点的 WiFi 设备
     Ptr<SpectrumWifiPhy> spectrumPhy = DynamicCast<SpectrumWifiPhy>(wifiDevice->GetPhy());
     msgInterface->CppSendBegin();
-    // std::cout << "第一次开始cppsend" << std::endl;
     msgInterface->GetCpp2PyStruct()->id = id;
-    // std::cout << "修改id" << id << std::endl;
     msgInterface->CppSendEnd();
-    // std::cout << "第一次结束cppsend" << std::endl;
-
-    // std::cout << " 正在调用python执行优化策略 " << std::endl;
     msgInterface->CppRecvBegin();
-    // std::cout << " 开始cppRecv " << std::endl;
     next_channel = msgInterface->GetPy2CppStruct()->next_channel;
     txPower = msgInterface->GetPy2CppStruct()->next_power;
-    // std::cout << " 收到改变的power为： "<< txPower << std::endl;
     msgInterface->CppRecvEnd();
-    // std::cout << " 结束cppRecv " << std::endl;
     if(!spectrumPhy->IsStateSwitching() && next_channel!=spectrumPhy->GetChannelNumber()){
-    SetTxPower(node, txPower);
-    std::cout << "Set Power : " << txPower << std::endl;
-    std::cout << "------------------------------Set Channel : "<< next_channel << "------------------------------" << std::endl;
-    spectrumPhy->SetAttribute("ChannelSettings",StringValue(std::string("{" + std::to_string(next_channel) +", 20, BAND_2_4GHZ, 0}")));
-    // cout << "执行ChangeChannel" << endl;
-    // cout << "执行GetChannelNumber" << spectrumPhy->GetChannelNumber() << endl;
-}
+        SetTxPower(node, txPower);
+        // std::cout << "Set Power : " << txPower << std::endl;
+        std::cout << "------------------------------Set Channel : "<< next_channel << "修改id:  " << id <<"------------------------------" << std::endl;
+        spectrumPhy->SetAttribute("ChannelSettings",StringValue(std::string("{" + std::to_string(next_channel) +", 20, BAND_2_4GHZ, 0}")));
+    }
 }
 
 void ConfigureNode(int nodeId, double type, SpectrumWifiPhyHelper& spectrumWifiPhy, WifiMacHelper& nodeswifiMac, NodeContainer& nodes,Ptr<FriisPropagationLossModel>& FriislossModeldouble,
@@ -1014,39 +1041,77 @@ void MonitorSnifferRx (Ptr<Node> node, Ptr<const Packet> packet, uint16_t channe
 
     Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0)); // 获取节点的 WiFi 设备
     Ptr<SpectrumWifiPhy> spectrumPhy = DynamicCast<SpectrumWifiPhy>(wifiDevice->GetPhy());
-    if(snr < 16 ){
-        cout << "SNR: " << snr << endl;
-        Simulator::Schedule(MilliSeconds(10), &ChangeChannel, node, id);
-    }
+    // if(snr < 16 ){
+    //     // cout << "SNR: " << snr << endl;
+    //     // Simulator::Schedule(MilliSeconds(10), &ChangeSingleNodeDataRate, node, "HtMcs7");
+    //     Simulator::Schedule(MilliSeconds(10), &ChangeChannel, node, id);
+    // }
     Simulator::Schedule(Seconds(0.0),&dataActiviatyInfoFile,tempNodes,ref(dataActiviaty));
-    // std::cout << "MonitorSnifferRx : Finished" << std::endl;
 }
 
-void PrintRoutingTable(std::string filePath, Time printInterval) {
-    // 创建新的 OutputStreamWrapper 对象以覆盖原有文件
-    Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper>(filePath, ios::app);
+struct DataForThpt
+{
+    FlowMonitorHelper flowmon;
+    Ptr<FlowMonitor> monitor;
+    uint32_t totalRxPackets; // Total number of received packets in all flows
+    uint64_t totalRxBytes;   // Total bytes received in all flows
+    double totalDelaySum;    // Total delay sum in all flows
 
-    // 打印当前时刻的路由表
-    Ipv4RoutingHelper::PrintRoutingTableAllAt(Simulator::Now(), routingStream);
+    // average delay (ms)
+    double averageDelay()
+    {
+        return totalRxPackets ? totalDelaySum / totalRxPackets / 1000000 : 0;
+    }
+} dataa; // data is a structure variable which will store all these global variables.
 
-    // 安排下一次打印
-    Simulator::Schedule(printInterval, &PrintRoutingTable, filePath, printInterval);
+double duration = 5.0;     // Duration of simulation (s)
+double statInterval = 1; // Time interval of calling function Throughput
+
+// This function is being called every 'statInterval' seconds, It measures delay and throughput in
+// every 'statInterval' time window. It calculates overall throughput in that window of all flows in
+// the network.
+static void
+Throughput()
+{
+    dataa.monitor->CheckForLostPackets();
+    // Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier>
+    // (data.flowmon.GetClassifier ());
+    const FlowMonitor::FlowStatsContainer stats = dataa.monitor->GetFlowStats();
+
+    uint64_t totalRxBytes = 0;
+    uint32_t totalRxPackets = 0;
+    double totalDelaySum = 0;
+    // Iterating through every flow
+    for (FlowMonitor::FlowStatsContainerCI iter = stats.begin(); iter != stats.end(); iter++)
+    {   
+        totalRxBytes += iter->second.rxBytes;
+        totalDelaySum += iter->second.delaySum.GetDouble();
+        totalRxPackets += iter->second.rxPackets;
+    }
+
+    uint64_t rxBytesDiff = totalRxBytes - dataa.totalRxBytes;
+    uint32_t rxPacketsDiff = totalRxPackets - dataa.totalRxPackets;
+    double delayDiff = totalDelaySum - dataa.totalDelaySum;
+
+    dataa.totalRxBytes = totalRxBytes;
+    dataa.totalRxPackets = totalRxPackets;
+    dataa.totalDelaySum = totalDelaySum;
+    std::cout << "dataa.totalrxPackets  " << dataa.totalRxPackets << "totalRxPackets  " << totalRxPackets << "rxPacketsDiff  "<< rxPacketsDiff << std::endl;
+    double delay = 0.0; // ms
+    if (rxPacketsDiff != 0 && delayDiff != 0)
+    {
+        delay = delayDiff / rxPacketsDiff / 1000000;
+    }
+    double tpt = 8.0 * rxBytesDiff / statInterval / (1024 * 1024); // Mbps
+
+    std::cout << "Delay: " << delay << "ms, Throughput: " << tpt << "Mbps" << std::endl;
+    Simulator::Schedule(Seconds(statInterval), &Throughput);
 }
 
 int main (int argc, char *argv[])
 {
-    // LogComponentEnable("SpectrumWifiPhy", LOG_LEVEL_DEBUG);
-    // LogComponentEnable("SpectrumWifiPhy", LOG_FUNCTION);
-    // LogComponentEnable("WifiPhyStateHelper", LOG_FUNCTION);
-    // LogComponentEnable("WifiPhyStateHelper", LOG_LEVEL_DEBUG);
-    // LogComponentEnable("WifiPhy", LOG_FUNCTION);
-    // LogComponentEnable("WifiPhy", LOG_LEVEL_DEBUG);
-    // LogComponentEnable("PhyEntity", LOG_LEVEL_DEBUG);
-    // LogComponentEnable("SpectrumWifiHelper", LOG_LEVEL_DEBUG);
-    // LogComponentEnable("SpectrumWifiHelper", LOG_FUNCTION);
-    
-    // PhyEntity
-       //创建interface实例
+
+    //创建interface实例
     auto interface = Ns3AiMsgInterface::Get();
     interface->SetIsMemoryCreator(false);
     interface->SetUseVector(false);
@@ -1217,43 +1282,6 @@ int main (int argc, char *argv[])
         ConfigureForestSpectrumWifiPhy (spectrumWifiPhy,LogDistanceForestlossModel,NakagamiForestlossModel,txPowerStart,txPowerEnd,m0, m1, m2, antennas, txGain, rxGain,
                                     maxTxSpatialStreams,maxRxSpatialStreams,rxSensitivity,referenceLoss+type,referenceDistance,pathLossExponent);           
     }
-    //创建MAC层助手,并设置为AD-Hoc模式
-    // WifiMacHelper nodesWifiMac = CreateWifiMacHelper("ns3::AdhocWifiMac");
-    // NetDeviceContainer nodeDevices = wifi.Install(nodesWifiPhy, nodesWifiMac, nodes);
-    //     // 2.4GHz WiFi频段的起始频率
-    // double startFrequency = 2412e6;
-    // // 2.4GHz WiFi频段每个信道的间隔
-    // double channelSpacing = 5e6;
-    // // 2.4GHz WiFi标准信道宽度
-    // double channelWidth = 20e6;
-    // for (int i = 0; i < 13; ++i) {
-    //     Bands band;
-    //     BandInfo bandInfo;
-    //     bandInfo.fc = startFrequency + i * channelSpacing;
-    //     bandInfo.fl = bandInfo.fc - channelWidth / 2.0;
-    //     bandInfo.fh = bandInfo.fc + channelWidth / 2.0;
-    //     band.push_back(bandInfo);
-    //     // 将每个 Band 添加到 allBands 中
-    //     allBands.push_back(band);
-    // }
-    // SpectrumInter = Create<SpectrumModel>(allBands[0]);
-    // double waveformPower = 0.015;
-    // Ptr<SpectrumValue> wgPsd =
-    //         Create<SpectrumValue>(SpectrumInter);
-    //     *wgPsd = waveformPower / 20e6; // PSD spread across 20 MHz
-    //     WaveformGeneratorHelper waveformGeneratorHelper;
-    //     waveformGeneratorHelper.SetChannel(spectrumChannel);
-    //     waveformGeneratorHelper.SetTxPowerSpectralDensity(wgPsd);
-    //     waveformGeneratorHelper.SetPhyAttribute("Period", TimeValue(Seconds(0.0007)));
-    //     waveformGeneratorHelper.SetPhyAttribute("DutyCycle", DoubleValue(1));
-    //     NetDeviceContainer waveformGeneratorDevices =
-    //     waveformGeneratorHelper.Install(interferingNode);
-    //     Simulator::Schedule(Seconds(0.002),
-    //                         &WaveformGenerator::Start,
-    //                         waveformGeneratorDevices.Get(0)
-    //                             ->GetObject<NonCommunicatingNetDevice>()
-    //                             ->GetPhy()
-    //                             ->GetObject<WaveformGenerator>());
     //设置移动模型
     MobilityHelper mobility;
 
@@ -1271,7 +1299,7 @@ int main (int argc, char *argv[])
 
     mobility.SetMobilityModel("ns3::RandomWalk2dMobilityModel",
                                 "Bounds", RectangleValue(Rectangle(-20000000, 20000000, -60000000, 60000000)),
-                               "Distance", DoubleValue(10/10.0),
+                               "Distance", DoubleValue(10/100.0),
                                "Time", TimeValue(Seconds(1)));
     mobility.Install (nodes);
 
@@ -1290,13 +1318,6 @@ int main (int argc, char *argv[])
         nodesInterfaces[i] = address.Assign(nodeDevices[i]);
     }
 
-/*
-    Time printInterval = Seconds(30);
-    string filePath = "./scratch/aodv.routes";
-
-    // 在初次延迟后开始打印路由表
-    Simulator::Schedule(printInterval, &PrintRoutingTable, filePath, printInterval);
-*/
 
     for (uint16_t i = 0; i < nodes.GetN(); i++){
         string modelId = FindIdFromMap(nodes.Get(i));
@@ -1377,7 +1398,11 @@ int main (int argc, char *argv[])
     Simulator::Schedule(Seconds(60.0*5+3),&ModifyJsonFile,ref(rewriteFile));
     Simulator::Schedule(Seconds(60.0*5+3),&ModifyJsonFile,ref(rewriteDataFile));
     Simulator::Schedule(Seconds(60.0*5+3),&ModifyJsonFile,ref(rewriteDataActiviatyFile));
-
+    dataa.monitor = dataa.flowmon.InstallAll();
+    dataa.totalDelaySum = 0;
+    dataa.totalRxBytes = 0;
+    dataa.totalRxPackets = 0;
+    Simulator::Schedule(Seconds(2.0 - 1.0), &Throughput);
     Simulator::Stop(Seconds(60.0*5+60));
 
     // 运行仿真
