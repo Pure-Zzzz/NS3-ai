@@ -35,6 +35,7 @@ import time
 from channel_power.train import MyRLEnvironment
 from DQN import DeepQAgent
 
+print("-----------------apb.py running-------------------")
 s = units.Soldier()
 mcs_c = s.mcs_choices
 

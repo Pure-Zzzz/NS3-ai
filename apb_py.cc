@@ -40,6 +40,7 @@ PYBIND11_MODULE(ns3ai_apb_py_stru, m)
         .def_readwrite("terrain", &EnvStruct::terrain)
         .def_readwrite("weather", &EnvStruct::weather)
         .def_readwrite("mcs", &EnvStruct::mcs)
+        .def_readwrite("action", &EnvStruct::action)
         .def_readwrite("nodetype", &EnvStruct::nodetype);
 
     py::class_<ActStruct>(m, "PyActStruct").def(py::init<>())

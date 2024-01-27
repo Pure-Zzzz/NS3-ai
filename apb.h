@@ -15,6 +15,7 @@ struct EnvStruct
     uint8_t weather;//当前场景天气
     uint8_t nodetype;//该节点的类别
     uint8_t mcs;//当前MCS
+    uint8_t action;
 };
 
 struct ActStruct
