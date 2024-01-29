@@ -436,6 +436,7 @@ MediaType GenerateRandomMediaType() {
 }
 
 //读取节点位置信息
+//读取节点位置信息
 vector<Data> readData(const string &filePath, int soldier, int tanke, int engineer, int trans, int ambulace, int command, int radiovech, int radio) {
     vector<Data> dataArray;
     ifstream file(filePath);
@@ -450,20 +451,9 @@ vector<Data> readData(const string &filePath, int soldier, int tanke, int engine
             columns.push_back(item);
         }
         if (columns.size() >= 12) {
-            if(radiovech == 3){
-                if((count>0 && count<=soldier) || (count>A[0] && count<=tanke+A[0]) || (count>A[1] && count<=engineer+A[1]) || (count>A[2] && count<=trans+A[2]) || (count>A[3] && count<=ambulace+A[3]) || (count>A[4] && count<=command+A[4]) ||(count>A[5] && count<=radiovech+A[5]-1) || (count>A[6]-1 && count<=radio+A[6]-1)){
-                    Data data = {columns[0], columns[1], columns[6], columns[7], columns[8]};//获取原始转换的笛卡尔坐标系的数据
-                    dataArray.push_back(data);
-                }
-                if(count == 28){
-                    Data data = {columns[0], columns[1], columns[6], columns[7], columns[8]};//获取原始转换的笛卡尔坐标系的数据
-                    dataArray.push_back(data);
-                }
-            }else{
-                if((count>0 && count<=soldier) || (count>A[0] && count<=tanke+A[0]) || (count>A[1] && count<=engineer+A[1]) || (count>A[2] && count<=trans+A[2]) || (count>A[3] && count<=ambulace+A[3]) || (count>A[4] && count<=command+A[4]) ||(count>A[5] && count<=radiovech+A[5]) || (count>A[6]-1 && count<=radio+A[6]-1)){
-                    Data data = {columns[0], columns[1], columns[6], columns[7], columns[8]};//获取原始转换的笛卡尔坐标系的数据
-                    dataArray.push_back(data);
-                }
+            if((count>0 && count<=soldier) || (count>A[0] && count<=tanke+A[0]) || (count>A[1] && count<=engineer+A[1]) || (count>A[2] && count<=trans+A[2]) || (count>A[3] && count<=ambulace+A[3]) || (count>A[4] && count<=command+A[4]) ||(count>A[5] && count<=radiovech+A[5]) || (count>A[6] && count<=radio+A[6])){
+                Data data = {columns[0], columns[1], columns[6], columns[7], columns[8]};//获取原始转换的笛卡尔坐标系的数据
+                dataArray.push_back(data);
             }
         }
         count++;

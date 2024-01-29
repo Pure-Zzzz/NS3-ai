@@ -1,3 +1,4 @@
+import random
 import units
 from units import whichpower
 import ns3ai_apb_py_stru as py_binding
@@ -70,7 +71,7 @@ try:
                 #单音干扰，直接切换信道
                 print('单音干扰优化')
                 msgInterface.PySendBegin()
-                next_channel = (current_channel+4)%13+1
+                next_channel = (current_channel+random.randint(2,12))%13+1 #随机切换信道
                 msgInterface.GetPy2CppStruct().next_channel = next_channel
                 msgInterface.PySendEnd()
                 write_opt('time:{}----检测到当前收到单音干扰，调用电磁干扰优化策略：执行信道切换 {}信道---->{}信道'.format(time,current_channel,next_channel))
