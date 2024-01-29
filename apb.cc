@@ -1221,13 +1221,16 @@ void DataInfoFile(Ptr<Node> start, Ptr<Node> &target, uint32_t size,long long ti
     double delay = time -startTime;
 
     string datarate;
-    if(size == 2048){
-        datarate = "500kbps";
+    if(size == 4096){
+        datarate = "1024kbps";
+    }else if(size == 2048){
+        datarate = "512kbps";
     }else if(size == 1024){
-        datarate = "100kbps";
+        datarate = "256kbps";
     }else{
-        datarate = "50kbps";
+        datarate = "128kbps";
     }
+
 
 
     for (auto& vectorNode : nodeVector){
@@ -1439,13 +1442,16 @@ void ReceivePacket (string context, Ptr<const Packet> packet, const Address &fro
 
         string mediaTypeString;
 
-        if(packet->GetSize() == 512){
-            mediaTypeString = "文本";
+        if(packet->GetSize() == 4096){
+            mediaTypeString = "视频";
         }else if(packet->GetSize() == 1024){
+            mediaTypeString = "图片";
+        }else if(packet->GetSize() == 2048){
             mediaTypeString = "音频";
         }else{
-            mediaTypeString = "视频";
+            mediaTypeString = "文本";
         }
+
 
         //更新吞吐量
         throughoutputByModelId[FindIdFromMap(node)]+=packet->GetSize ();
@@ -1497,24 +1503,30 @@ void StartSpecificTransmission(uint32_t sourceIndex, uint32_t targetIndex, NodeC
     double videoPacketRate = 50;     // 每秒数据包数
     double audioPacketRate = 70;     // 每秒数据包数
     double textPacketRate = 30;       // 每秒数据包数
+    double picturePacketRate = 40;
 
     if(mediaTypeString == "文本" || mediaTypeString == "未知类型"){
-        datarate = "50kb/s";
+        datarate = "128kb/s";
         packetsize = 512;
         maxPackets = textPacketRate * duration.GetSeconds();
-    }else if(mediaTypeString == "视频"){
-        datarate = "500kb/s";
-        packetsize = 2048;
+    }else if(mediaTypeString == "图片"){
+        datarate = "256kb/s";
+        packetsize = 1024;
         maxPackets = videoPacketRate * duration.GetSeconds();
     }else if(mediaTypeString == "录音"){
-        packetsize = 1024;
-        datarate = "100kb/s";
-        maxPackets = audioPacketRate * duration.GetSeconds();
+        datarate = "512kb/s";
+        packetsize = 2048;
+        maxPackets = audioPacketRate* duration.GetSeconds();
+    }else if(mediaTypeString == "视频"){
+        packetsize = 4096;
+        datarate = "1024kb/s";
+        maxPackets = videoPacketRate * duration.GetSeconds();
     }else{
-        datarate = "50kb/s";
+        datarate = "128kb/s";
         packetsize = 512;
         maxPackets = textPacketRate * duration.GetSeconds();
     }
+
     OnOffHelper onOffHelper("ns3::UdpSocketFactory", Address(InetSocketAddress(targetAddress, port)));
     onOffHelper.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant="+continuetime+"]"));
     onOffHelper.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant="+stoptime+"]"));
