@@ -47,7 +47,7 @@ def process(terrain_path, weather_path):
     plt.savefig('terrain_split.png')
     weather_category = predict(weather_path)
 #     print("--------------完成地形分割------------------")
-    
+
 #     matches = parse_file()
 #     id_weather_dict = {}
 #     # 主文件夹路径
@@ -93,7 +93,7 @@ def process(terrain_path, weather_path):
 #         # 设置文件夹属性为最常见的天气类别
 #         print(f"文件夹 {user_id} 的主要天气类别是：{most_common_weather}")
 #         id_weather_dict[user_id] = most_common_weather
-        
+
 # #-----------------------
 
 #     # 加载灰度图
