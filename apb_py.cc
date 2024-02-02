@@ -46,6 +46,7 @@ PYBIND11_MODULE(ns3ai_apb_py_stru, m)
 
     py::class_<ActStruct>(m, "PyActStruct").def(py::init<>())
         .def_readwrite("next_channel", &ActStruct::next_channel)
+        .def_readwrite("opt", &ActStruct::opt)
         .def_readwrite("next_power", &ActStruct::next_power)
         .def_readwrite("next_mcs", &ActStruct::next_mcs);
 

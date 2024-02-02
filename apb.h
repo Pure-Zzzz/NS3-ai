@@ -24,6 +24,7 @@ struct ActStruct
     uint32_t next_channel;//下一信道
     uint32_t next_power;//下一功率
     uint32_t next_mcs;//下一mcs
+    uint8_t opt;
 };
 
 

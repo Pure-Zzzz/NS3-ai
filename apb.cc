@@ -38,8 +38,16 @@ using namespace ns3;
 using namespace std;
 Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>* msgInterface;
 using json = nlohmann::json;
-
-int stepcount=0;
+double totaldelatTime = 0;
+double delay = 0.0;
+double snrAverage = 0.0;
+double tpt = 0.0;
+double statInterval = 2;
+int stepcount = 0.0;
+//数据库图片存放路径"/home/ns3/project/database"
+string database = "/home/ns3/project/database";
+//电磁图片存放路径"/home/ns3/project/electric"
+string electric = "/home/ns3/project/electric";
 //节点数据
 struct NodeData {
     string nodeID;
@@ -53,7 +61,7 @@ struct NodeData {
     //构造函数
     NodeData(string id, double tpt, double snr, int size, double dly, double act, long long lastUpdateTime)
         :nodeID(id), throughput(tpt), signalToNoise(snr), packetSize(size), 
-         delay(dly), activity(act), lastUpdateTime(lastUpdateTime){
+        lastUpdateTime(lastUpdateTime), delay(dly), activity(act){
         
     }
 
@@ -88,114 +96,13 @@ struct NodeData {
     }
 };
 vector<NodeData> nodeVector;
-// struct DataForThpt
-// {
-//     FlowMonitorHelper flowmon;
-//     Ptr<FlowMonitor> monitor;
-//     uint32_t totalRxPackets; // Total number of received packets in all flows
-//     uint64_t totalRxBytes;   // Total bytes received in all flows
-//     double totalDelaySum;    // Total delay sum in all flows
-//     uint32_t totallostPackets;
-//     uint32_t totalTxPackets;
-//     // average delay (ms)
-//     double averageDelay()
-//     {
-//         return totalRxPackets ? totalDelaySum / totalRxPackets / 1000000 : 0;
-//     }
-// } dataa; // data is a structure variable which will store all these global variables.
-// double statInterval = 1.0; // Time interval of calling function Throughput
-// double mydelay = 0.0; // ms
-// // This function is being called every 'statInterval' seconds, It measures delay and throughput in
-// // every 'statInterval' time window. It calculates overall throughput in that window of all flows in
-// // the network.
-// static void
-// Throughput()
-// {
-//     dataa.monitor->CheckForLostPackets();
-//     const FlowMonitor::FlowStatsContainer stats = dataa.monitor->GetFlowStats();
-//     uint64_t totalRxBytes = 0;
-//     uint32_t totalRxPackets = 0;
-//     uint32_t totalTxPackets = 0;
-//     double totalDelaySum = 0;
-//     uint32_t totallostPackets = 0;
-//     // Iterating through every flow
-//     for (FlowMonitor::FlowStatsContainerCI iter = stats.begin(); iter != stats.end(); iter++)
-//     {
-//         totalRxBytes += iter->second.rxBytes;
-//         totalDelaySum += iter->second.delaySum.GetDouble();
-//         totalRxPackets += iter->second.rxPackets;
-//         totalTxPackets += iter->second.txPackets;
-//         totallostPackets += iter->second.lostPackets;
-//     }
-//     uint64_t rxBytesDiff = totalRxBytes - dataa.totalRxBytes;
-//     uint32_t rxPacketsDiff = totalRxPackets - dataa.totalRxPackets;
-//     double delayDiff = totalDelaySum - dataa.totalDelaySum;
-//     uint32_t lostPacketsDiff = totallostPackets - dataa.totallostPackets;
-//     uint32_t txPacketsDiff = totalTxPackets - dataa.totalTxPackets;
-//     dataa.totalRxBytes = totalRxBytes;
-//     dataa.totalRxPackets = totalRxPackets;
-//     dataa.totalDelaySum = totalDelaySum;
-//     dataa.totallostPackets = totallostPackets;
-//     dataa.totalTxPackets = totalTxPackets;
-//     double delay = 0.0; // ms
-//     double lossRate = 0.0;
-//     if (rxPacketsDiff != 0 && delayDiff != 0 )
-//     {
-//         delay = delayDiff / rxPacketsDiff / 1000000;
-//     }
-//     if (lostPacketsDiff != 0 && txPacketsDiff != 0 )
-//     {
-//         lossRate = static_cast<double>(totallostPackets) / totalTxPackets * 100;
-//     }
-//     double tpt = 8.0 * rxBytesDiff / statInterval / (1024 * 1024); // Mbps
-//     // std::cout << "myDelay: " << delay << "ms, myThroughput: " << tpt << "Mbps, rxPackets" << rxPacketsDiff << std::endl;
-//     std::cout << "时延: " << delay << "ms, 吞吐量: " << tpt << "Mbps, 收包数：" << rxPacketsDiff << "丢包数：" << totallostPackets << " 丢包率: "<< std::fixed << std::setprecision(1) << lossRate << "% 发送包: "<< txPacketsDiff << std::endl;
-//     Simulator::Schedule(Seconds(statInterval), &Throughput);
-// }
-// struct DataForThpt{
-//     FlowMonitorHelper flowmon;
-//     Ptr<FlowMonitor> monitor;
-//     uint32_t totalRxPackets; // Total number of received packets in all flows
-//     uint64_t totalRxBytes;   // Total bytes received in all flows
-//     double totalDelaySum;    // Total delay sum in all flows
-//     // average delay (ms)
-//     double averageDelay()
-//     {
-//         return totalRxPackets ? totalDelaySum / totalRxPackets / 1000000 : 0;
-//     }
-// } flowdata;
-// double duration = 5.0;
-// double statInterval = 0.2; 
-// static void Throughput(){
-//     flowdata.monitor->CheckForLostPackets();
-//     const FlowMonitor::FlowStatsContainer stats = flowdata.monitor->GetFlowStats();
-//     uint64_t totalRxBytes = 0;
-//     uint32_t totalRxPackets = 0;
-//     double totalDelaySum = 0;
-//     for (FlowMonitor::FlowStatsContainerCI iter = stats.begin(); iter != stats.end(); iter++){
-//         totalRxBytes += iter->second.rxBytes;
-//         totalDelaySum += iter->second.delaySum.GetDouble();
-//         totalRxPackets += iter->second.rxPackets;
-//     }
-//     uint64_t rxBytesDiff = totalRxBytes - flowdata.totalRxBytes;
-//     uint32_t rxPacketsDiff = totalRxPackets - flowdata.totalRxPackets;
-//     double delayDiff = totalDelaySum - flowdata.totalDelaySum;
-//     flowdata.totalRxBytes = totalRxBytes;
-//     flowdata.totalRxPackets = totalRxPackets;
-//     flowdata.totalDelaySum = totalDelaySum;
-//     double delay = 0.0; // ms
-//     if (rxPacketsDiff != 0 && delayDiff != 0){
-//         delay = delayDiff / rxPacketsDiff / 1000000;
-//     }
-//     double tpt = 8.0 * rxBytesDiff / statInterval / (1024 * 1024); // Mbps 
-//     //cout << ": Delay: " << delay << "ms, Throughput: " << tpt << "Mbps" << endl;
-//     Simulator::Schedule(Seconds(statInterval), &Throughput);
-// }
+
 
 //socket
 Ptr<Socket> srcSocket;
 queue<string> stringQueue;
 int next_channel = 0 ;
+int opt = 0;
 //默认节点速度
 double soldierSpeed=5.0;
 double tankerSpeed=16.0;
@@ -223,6 +130,7 @@ double m2=1.2;
 double referenceLoss=50;
 double referenceDistance=2.95;
 double pathLossExponent=2.95;
+bool changechannel = true;
 
 // 存储所有频带的向量
 vector<Bands> allBands;
@@ -256,11 +164,71 @@ uint16_t radarVehicleNum=3;
 uint16_t radarNum=9;
 uint16_t totalNodes=28;
 
+struct DataForThpt{
+    FlowMonitorHelper flowmon;
+    Ptr<FlowMonitor> monitor;
+    uint32_t totalRxPackets; // Total number of received packets in all flows
+    uint64_t totalRxBytes; // Total bytes received in all flows
+    double totalDelaySum; // Total delay sum in all flows
+// average delay (ms)
+    double averageDelay()
+    {
+    return totalRxPackets ? totalDelaySum / totalRxPackets / 1000000 : 0;
+    }
+} flowdata;
+
+static void Throughput(){
+    flowdata.monitor->CheckForLostPackets();
+    const FlowMonitor::FlowStatsContainer stats = flowdata.monitor->GetFlowStats();
+    uint64_t totalRxBytes = 0;
+    uint32_t totalRxPackets = 0;
+    double totalDelaySum = 0;
+    for (FlowMonitor::FlowStatsContainerCI iter = stats.begin(); iter != stats.end(); iter++){
+        totalRxBytes += iter->second.rxBytes;
+        totalDelaySum += iter->second.delaySum.GetDouble();
+        totalRxPackets += iter->second.rxPackets;
+    }
+    uint64_t rxBytesDiff = totalRxBytes - flowdata.totalRxBytes;
+    uint32_t rxPacketsDiff = totalRxPackets - flowdata.totalRxPackets;
+    double delayDiff = totalDelaySum - flowdata.totalDelaySum;
+    flowdata.totalRxBytes = totalRxBytes;
+    flowdata.totalRxPackets = totalRxPackets;
+    flowdata.totalDelaySum = totalDelaySum;
+    delay = 0.0; // ms
+    if (rxPacketsDiff != 0 && delayDiff != 0){
+        delay = delayDiff / rxPacketsDiff / 1000000;
+        delay = round(delay * 100) / 100;
+    }
+    tpt = 8.0 * rxBytesDiff / statInterval / (1024 * 1024); // Mbps
+    tpt = round(tpt * 100) / 100;
+    // 创建 JSON 对象
+    json jsonObj;
+    // 添加 ArrangeType 到 JSON 对象
+    jsonObj["ArrangeType"] = "avgNetwork";
+    jsonObj["PkgType"] = "003";
+    // 创建 Params 数组
+    json paramsArray = json::array();
+    // 创建 Params 数组中的嵌套 JSON 对象
+    json nestedObj;
+    
+    nestedObj["Delay"] = delay;
+    nestedObj["SNRAverage"] = snrAverage;
+    nestedObj["Throughput"] = tpt;
+    // 将嵌套 JSON 对象添加到 Params 数组中
+    paramsArray.push_back(nestedObj);
+    // 将 Params 数组添加到主 JSON 对象中
+    jsonObj["Params"] = paramsArray;
+    cout << jsonObj << endl;
+    stringQueue.push(jsonObj.dump());
+    Simulator::Schedule(Seconds(statInterval), &Throughput);
+}
+
+
 vector<uint16_t> myVector = {soldierNum, tankerNum, constructionVehicleNum, transportVehicleNum, ambulanceNum, commandTentNum, radarVehicleNum, radarNum};
 vector<uint16_t> InitialVector(){
     vector<uint16_t> transvector(myVector.size());
     int sum = 0;
-    for(int i=0;i<myVector.size();i++){
+    for(auto i=0u;i<myVector.size();i++){
         transvector[i] = sum + myVector[i];
         sum += myVector[i];
     }
@@ -271,6 +239,7 @@ vector<uint16_t> InitialVector(){
 void SendData(Ptr<Socket> socket) {
     // 检查队列是否不为空
     if(!stringQueue.empty()){
+        // cout << stringQueue.size() << endl;
         string toSend = stringQueue.front(); // 获取队列的第一个元素
         stringQueue.pop(); // 将该元素从队列中移除
 
@@ -278,7 +247,7 @@ void SendData(Ptr<Socket> socket) {
         Ptr<Packet> packet = Create<Packet>((uint8_t*)toSend.c_str(), toSend.length());
         socket->Send(packet);
     }
-    Simulator::Schedule(Seconds(0.01),&SendData,socket);
+    Simulator::Schedule(Seconds(0.001),&SendData,socket);
 }
 
 // 创建一个新的类，该类继承自 Object
@@ -364,16 +333,16 @@ constexpr double DEG_TO_RAD_LOCAL = 3.1415926535897932 / 180.0;
 constexpr double RAD_TO_DEG_LOCAL = 180.0 /3.1415926535897932;
 ofstream outputFile;
 ofstream dataputFile;
-ofstream dataActiviaty;
+ofstream dataActivity;
 ofstream dataAi;
 Ptr<Node> tempNode;//临时记录节点信息的全局变量,用于输出snr等信息
 int first = 1;//判断输出的json是否为第一行从而决定是否输出
 int second = 1;//判断数据包信息输出文件是否为第一行
 int third = 1;//判断活跃度文件信息输出是否为第一行
-int activiaty ;//判断是否给用户活跃度文件添加信息，每25s会添加5s的数据
+int activity ;//判断是否给用户活跃度文件添加信息，每25s会添加5s的数据
 int busy = 0;//判读当前是否正在进行数据包的发送，如果没有为0，有为1
-string continuetime = "1";//onoffhelper持续发送数据包时间
-string stoptime = "2";//onoffhelper停止发送数据包时间
+string continuetime = "3";//onoffhelper持续发送数据包时间
+string stoptime = "1";//onoffhelper停止发送数据包时间
 int jishu = 0;//用来判断当前进行信道修改的节点
 
 double totalSnr = 0;//统计多少秒内的平均信噪比
@@ -406,7 +375,8 @@ Temp temp, datatemp;
 enum MediaType {
     VIDEO = 1,
     TEXT = 2,
-    AUDIO = 3
+    AUDIO = 3,
+    PICTURE = 4
 };
 
 string MediaTypeToString(MediaType mediaType) {
@@ -414,6 +384,7 @@ string MediaTypeToString(MediaType mediaType) {
         case VIDEO: return "视频";
         case TEXT:  return "文本";
         case AUDIO: return "录音";
+        case PICTURE: return "图片";
         default:    return "未知类型";
     }
 }
@@ -428,8 +399,10 @@ MediaType GenerateRandomMediaType() {
     // 按照指数分布的特性调整返回值，使得视频和音频更频繁
     if (randomValue < 2.0) {
         return VIDEO; // 视频
-    } else if (randomValue < 4.0) {
+    } else if (randomValue < 3.0) {
         return AUDIO; // 音频
+    } else if (randomValue < 4.0) {
+        return PICTURE; // 音频
     } else {
         return TEXT; // 文本
     }
@@ -558,6 +531,13 @@ void AddToMap(Ptr<Node> Node, string nodeName, string nodeId, string nodeType){
 //将节点id和阵营对应关系加入map中
 void AddidToGroup(string nodeId, string group){
     idToGroupMap[nodeId] = group;
+}
+
+uint8_t GetCurrentChannel(){
+    Ptr<Node> node = nodes.Get(0);
+    Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0));
+    Ptr<WifiPhy> wifiPhy_tmp = wifiDevice->GetPhy();
+    return wifiPhy_tmp->GetChannelNumber();
 }
 
 //从map里面通过id查找阵营
@@ -699,8 +679,8 @@ void LogJsonPosition(NodeContainer Nodes, ofstream& outputFile)
     {
         Ptr<MobilityModel> mobility = Nodes.Get(i)->GetObject<MobilityModel>();
         Vector pos = mobility->GetPosition();
-        Vector speed = mobility->GetVelocity();
-        double speedMagnitude = 20*sqrt(speed.x * speed.x + speed.y * speed.y + speed.z * speed.z);//节点的当前速度
+        // Vector speed = mobility->GetVelocity();
+        // double speedMagnitude = 20*sqrt(speed.x * speed.x + speed.y * speed.y + speed.z * speed.z);//节点的当前速度
         string foundName = Names::FindName(Nodes.Get(i));
         vector<string> retrievedVector = SearchVectorData(Nodes.Get(i));
         // 获取当前时间点
@@ -801,31 +781,25 @@ void ModifyJsonFile(std::fstream& file) {
 }
 
 void ClearActivityFile(ofstream& outputFile, ofstream& inputFile) {
-    outputFile.open("data-activiaty-log.json", ofstream::out | ofstream::trunc); // 以截断方式打开文件
+    outputFile.open("data-activity-log.json", ofstream::out | ofstream::trunc); // 以截断方式打开文件
     if (outputFile.is_open()) {
         outputFile.close(); // 关闭文件，这将清空文件内容
         inputFile.close();
-        fstream file("data-activiaty-log.json", ios::in | ios::out | ios::ate);
+        fstream file("data-activity-log.json", ios::in | ios::out | ios::ate);
 
         ModifyJsonFile(file);
     }
 
-    // fstream file("data-activiaty-log.json", ios::in | ios::out | ios::ate);
-
-    // ModifyJsonFile(file);
-
-    std::ifstream src("data-activiaty-log.json", std::ios::binary);
+    std::ifstream src("data-activity-log.json", std::ios::binary);
 
     std::ofstream dest("activity-data-log.json", std::ios::binary);
 
     dest << src.rdbuf();
 
-
-
     src.close();
     dest.close();
 
-    outputFile.open("data-activiaty-log.json");
+    outputFile.open("data-activity-log.json");
     inputFile.open("activity-data-log.json", std::ios::out | std::ios::app);
     outputFile << "[" << endl;
 
@@ -881,6 +855,15 @@ WifiMacHelper CreateWifiMacHelper(string macModel)
     return wifiMac;
 }
 
+//更新节点活跃度
+void updataNodeActivity(string nodeId, int activity){
+    for(auto nodevector : nodeVector){
+        if(nodevector.nodeID == nodeId){
+            nodevector.activity = activity;
+            idToActivityMap[nodeId] = activity;
+        }
+    }
+}
 
 void NodesAddMovement(MobilityHelper &mobility){
     int time;
@@ -1019,12 +1002,6 @@ void ConfigureForestSpectrumWifiPhy(SpectrumWifiPhyHelper& spectrumWifiPhy,Ptr<L
     spectrumWifiPhy.Set("TxPowerEnd", DoubleValue(txPowerEnd));// 设置功率
 }
 
-void SetTxPower(Ptr<Node> node, double txPower) {
-    Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0)); // 假设wifi设备是第一个设备
-    Ptr<SpectrumWifiPhy> phy = DynamicCast<SpectrumWifiPhy>(wifiDevice->GetPhy());
-    phy->SetTxPowerStart(txPower);
-    phy->SetTxPowerEnd(txPower);
-}
 
 void ChangeChannel(Ptr<Node> node, Ptr<WifiPhy> spectrumPhy, uint16_t channelId) {
     double nowtime = Simulator::Now().GetSeconds();
@@ -1032,15 +1009,21 @@ void ChangeChannel(Ptr<Node> node, Ptr<WifiPhy> spectrumPhy, uint16_t channelId)
     else {
         if(channelId==spectrumPhy->GetChannelNumber()){
             cout << "信道相同，不执行信道切换" << endl;
-        }else 
+            changechannel = false;
+        }else
         if(!spectrumPhy->IsStateSwitching()){
-            spectrumPhy->SetAttribute("ChannelSettings",StringValue(string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}"))); // 设置新的频道号
+            if(channelId != 36){
+                spectrumPhy->SetAttribute("ChannelSettings",StringValue(string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}"))); // 设置新的频道号
+            } else {
+                spectrumPhy->SetAttribute("ChannelSettings",StringValue(string("{" + std::to_string(channelId) +", 20, BAND_5GHZ, 0}"))); // 设置新的频道号
+            }
             cout << nowtime << " 节点: " << FindIdFromMap(node) <<"的信道修改成功"<<endl;
-        } else {
+        }else {
             cout << nowtime <<",当前信道正忙，切换信道不成功"<<endl;
         }
-    } 
+    }
 }
+
 
 void ConfigureNode(int nodeId, double factor, SpectrumWifiPhyHelper& spectrumWifiPhy, WifiMacHelper& nodeswifiMac, NodeContainer& nodes,Ptr<FriisPropagationLossModel>& FriislossModeldouble,
                     Ptr<NakagamiPropagationLossModel>&NakagamilossModeldouble,WifiHelper& wifi, string terrain) 
@@ -1163,29 +1146,34 @@ int findIndexIfDuplicate(const std::string& start, const std::string& end) {
     return -1;
 }
 
-//15s输出延迟时间
-void printDataRecords() {
-    double totaldelatTime = 0;
-    for (const auto& record : dataRecords) {
-    //    cout << "Start Node: " << record.startNode
-    //              << ", End Node: " << record.endNode
-    //              << ", Delay Time: " << record.durationTime/accumulatedTime << " seconds\n";
-    //     totaldelatTime += record.durationTime/(accumulatedTime*1000);
-    }
-    cout<< "前" << accumulatedTime/1000 << "s的整个网络的平均时延为: " << totaldelatTime << " ms " << endl;
-    accumulatedTime+=15000;
-    Simulator::Schedule(Seconds(15.0), &printDataRecords);
+// //15s输出延迟时间
+// void printDataRecords() {
+    
+//     for (const auto& record : dataRecords) {
+//     //    cout << "Start Node: " << record.startNode
+//     //              << ", End Node: " << record.endNode
+//     //              << ", Delay Time: " << record.durationTime/accumulatedTime << " seconds\n";
+//     //     totaldelatTime += record.durationTime/(accumulatedTime*1000);
+//     }
+//     cout<< "前" << accumulatedTime/1000 << "s的整个网络的平均时延为: " << totaldelatTime << " ms " << endl;
+//     accumulatedTime+=15000;
+//     Simulator::Schedule(Seconds(15.0), &printDataRecords);
+// }
+
+
+//计算当前时间的平均信噪比
+void averageSnr(){
+    double current_time = Simulator::Now().GetSeconds();
+    snrAverage = totalSnr/totalPackets;
+    snrAverage = round(snrAverage * 100) / 100;
+    totalSnr = 0;
+    totalPackets = 0;
+    Simulator::Schedule(Seconds(2.0), &averageSnr);
 }
 
 //输出吞吐量
 void CalculateAndPrintThroughput(){
-    // 获取当前时间点
-    auto now = chrono::system_clock::now();
-    // 转换为时间戳
-    auto timeStamp = chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()).count();
-
     double currentTime = Simulator::Now ().GetSeconds ();
-    double throughput = totalReceivedBytes / currentTime;
     double totalThroughout = 0;
     for (const auto& entry:throughoutputByModelId)
     {
@@ -1286,21 +1274,21 @@ void DataInfoFile(Ptr<Node> start, Ptr<Node> &target, uint32_t size,long long ti
     stringQueue.push(jsonString);
 }
 
-void startDataActiviatyInfo(){
-    activiaty = 1;
-    Simulator::Schedule(Seconds(30.0), &startDataActiviatyInfo);
+void startDataActivityInfo(){
+    activity = 1;
+    Simulator::Schedule(Seconds(30.0), &startDataActivityInfo);
 }
 
-void stopDataActiviatyInfo(fstream& file, ofstream& outputfile, ofstream& inputfile){
-    activiaty = 0;
+void stopDataActivityInfo(fstream& file, ofstream& outputfile, ofstream& inputfile){
+    activity = 0;
 
     Simulator::Schedule(Seconds(0.5), &ClearActivityFile, ref(outputfile), ref(inputfile));
 
-    Simulator::Schedule(Seconds(30.0), &stopDataActiviatyInfo, ref(file), ref(outputfile), ref(inputfile));
+    Simulator::Schedule(Seconds(30.0), &stopDataActivityInfo, ref(file), ref(outputfile), ref(inputfile));
 }
 
 //处理收到数据包数据
-void dataActiviatyInfoFile(NodeContainer Nodes, ofstream& outputFile){ 
+void dataActivityInfoFile(NodeContainer Nodes, ofstream& outputFile){ 
     double nowtime = Simulator::Now().GetSeconds();
     if(fmod(nowtime,30.0) == 0){
         stepcount++;
@@ -1330,16 +1318,16 @@ void dataActiviatyInfoFile(NodeContainer Nodes, ofstream& outputFile){
 
             // 添加各种数据到 JSON 对象
             outputFile << "\"Step\": \"" << stepcount << "\", ";
-            outputFile << "\"Timestamp\": \"" << timestamp << "ms\", ";
+            outputFile << "\"Timestamp\": \"" << timestamp << "\", ";
             outputFile << "\"PkgType\": \"003\",";
             outputFile << "\"NodeId\": \"" << FindIdFromMap(Nodes.Get(i)) << "\", ";
             outputFile << "\"NodeGroup\":\""<< FindFromGroupMap(FindIdFromMap(Nodes.Get(i))) <<"\",";
             outputFile << "\"NodeType\": \"" << nameToTypeMap[foundName] << "\", ";
             outputFile << "\"NodeName\": \"" << foundName << "\", ";
-            outputFile << "\"NodeSpeed\": \""  << speedMagnitude << "m/s\", ";
+            outputFile << "\"NodeSpeed\": \""  << speedMagnitude << "\", ";
 
-            outputFile << "\"NodeTxPower\": \"" << NodePower(Nodes.Get(i)) << "dBm\", ";
-            outputFile << "\"NodeTP\": \"" << throughout << "Bps\", ";
+            outputFile << "\"NodeTxPower\": \"" << NodePower(Nodes.Get(i)) << "\", ";
+            outputFile << "\"NodeTP\": \"" << throughout << "\", ";
 
             XYZ2LLA(pos.x*20,pos.y*20,pos.z*20,X,Y,Z);//直接采用原始未经处理的地理坐标转换的笛卡尔坐标系坐标
             outputFile << "\"Position\": {\"x\": "  << fixed << setprecision(6)<< X << ", \"y\": " << Y << ", \"z\": " << Z << "}, ";//输出地理坐标
@@ -1361,10 +1349,10 @@ void dataActiviatyInfoFile(NodeContainer Nodes, ofstream& outputFile){
             }
         }
         // 每30秒记录
-        Simulator::Schedule(Seconds(30), &dataActiviatyInfoFile, Nodes, ref(outputFile));
+        Simulator::Schedule(Seconds(30), &dataActivityInfoFile, Nodes, ref(outputFile));
     }
 
-    if(activiaty == 1){
+    if(activity == 1){
         if(datatemp.status == 1){
             datatemp.status = 0;
             Ptr<Node> node = datatemp.nodes.Get(0);
@@ -1390,16 +1378,16 @@ void dataActiviatyInfoFile(NodeContainer Nodes, ofstream& outputFile){
 
             // 添加各种数据到 JSON 对象
             outputFile << "\"Step\": \"" << stepcount << "\", ";
-            outputFile << "\"Timestamp\": \"" << datatemp.timestamp << "ms\", ";
+            outputFile << "\"Timestamp\": \"" << datatemp.timestamp << "\", ";
             outputFile << "\"PkgType\": \"003\",";
             outputFile << "\"NodeId\": \"" << FindIdFromMap(node) << "\", ";
             outputFile << "\"NodeGroup\":\""<< FindFromGroupMap(FindIdFromMap(node)) <<"\",";
             outputFile << "\"NodeType\": \"" << nameToTypeMap[foundName] << "\", ";
             outputFile << "\"NodeName\": \"" << foundName << "\", ";
-            outputFile << "\"NodeSpeed\": \""  << speedMagnitude << "m/s\", ";
+            outputFile << "\"NodeSpeed\": \""  << speedMagnitude << "\", ";
             
-            outputFile << "\"NodeTxPower\": \"" << NodePower(node) << "dBm\", ";
-            outputFile << "\"NodeTP\": \"" << throughout << "Bps\", ";
+            outputFile << "\"NodeTxPower\": \"" << NodePower(node) << "\", ";
+            outputFile << "\"NodeTP\": \"" << throughout << "\", ";
 
             XYZ2LLA(pos.x*20,pos.y*20,pos.z*20,X,Y,Z);//直接采用原始未经处理的地理坐标转换的笛卡尔坐标系坐标
             outputFile << "\"Position\": {\"x\": "  << fixed << setprecision(6)<< X << ", \"y\": " << Y << ", \"z\": " << Z << "}, ";//输出地理坐标
@@ -1407,8 +1395,8 @@ void dataActiviatyInfoFile(NodeContainer Nodes, ofstream& outputFile){
             outputFile.precision(streamsize(-1));
             outputFile << "\"Terrain\": \"" << retrievedVector[0] << "\", ";
             outputFile << "\"Weather\": \"" << retrievedVector[1] << "\"";
-            outputFile << ",\"frequency\": \"" << datatemp.frequency << "MHz" << "\",";
-            outputFile << "\"SNR\": \"" << datatemp.snr << "dB" << "\",";
+            outputFile << ",\"frequency\": \"" << datatemp.frequency << "" << "\",";
+            outputFile << "\"SNR\": \"" << datatemp.snr << "\",";
             outputFile << "\"MCS\": \"" << datatemp.mcs.GetUniqueName()<< "\"";
             outputFile << "}";  // 结束 JSON 对象
             if(third == 1) {
@@ -1465,6 +1453,40 @@ void ReceivePacket (string context, Ptr<const Packet> packet, const Address &fro
     }
 }
 
+pair<vector<int>, vector<int>> SelectNodes(int totalNodes) {
+    
+    // 创建一个包含所有节点索引的向量
+    vector<int> allNodes(totalNodes);
+    for (int i = 0; i < totalNodes; ++i) {
+        allNodes[i] = i;
+    }
+    
+    // 初始化随机数生成器的种子
+    srand(static_cast<unsigned int>(time(nullptr)));
+    
+    // 使用标准库算法随机打乱节点索引
+    random_shuffle(allNodes.begin(), allNodes.end());
+    
+    // 计算总节点数的一半向下取整
+    int halfNodes = floor(totalNodes / 2.0);
+    
+    // 确保至少选择一个节点，最多选择halfNodes个节点
+    int firstSelectionCount = rand() % halfNodes + 1;
+    
+    // 选择随机数量的节点作为第一次选择
+    vector<int> firstSelection(allNodes.begin(), allNodes.begin() + firstSelectionCount);
+    
+    // 确保第二次选择的节点数加上第一次选择的节点数不超过halfNodes
+    int secondSelectionMax = min(halfNodes, totalNodes - firstSelectionCount);
+    int secondSelectionCount = rand() % secondSelectionMax + 1;
+    
+    // 选择随机数量的节点作为第二次选择
+    vector<int> secondSelection(allNodes.begin() + firstSelectionCount, allNodes.begin() + firstSelectionCount + secondSelectionCount);
+    
+    return make_pair(firstSelection, secondSelection);
+}
+
+
 void StartSpecificTransmission(uint32_t sourceIndex, uint32_t targetIndex, NodeContainer &sourceNodes, NodeContainer &targetNodes, uint16_t port, Time duration) {
     Ptr<Node> sourceNode = sourceNodes.Get(sourceIndex);
     Ipv4Address targetAddress;
@@ -1512,7 +1534,7 @@ void StartSpecificTransmission(uint32_t sourceIndex, uint32_t targetIndex, NodeC
     }else if(mediaTypeString == "图片"){
         datarate = "256kb/s";
         packetsize = 1024;
-        maxPackets = videoPacketRate * duration.GetSeconds();
+        maxPackets = picturePacketRate * duration.GetSeconds();
     }else if(mediaTypeString == "录音"){
         datarate = "512kb/s";
         packetsize = 2048;
@@ -1573,24 +1595,38 @@ void MonitorSnifferRx (Ptr<Node> node, Ptr<const Packet> packet, uint16_t channe
     totalPackets += 1;
 
     throughoutputByModelId[FindIdFromMap(node)]+=packet->GetSize ();
-    if(activiaty == 1)
-        Simulator::Schedule(Seconds(0.0),&dataActiviatyInfoFile,tempNodes,ref(dataActiviaty));
+    if(activity == 1)
+        Simulator::Schedule(Seconds(0.0),&dataActivityInfoFile,tempNodes,ref(dataActivity));
 }
 
 void StartTransmit(NodeContainer Nodes, uint16_t port){
     startTransmissionTime += Seconds(sendtimeinterval);
-    Simulator::Schedule(startTransmissionTime, &StartSpecificTransmission, 0, 1, Nodes, Nodes, port, transmissionDuration);
-    for (uint32_t i = 0; i < Nodes.GetN(); i++)
-    {
-        for (uint32_t j = 0; j < Nodes.GetN(); j++)
+    if(totalNodes<2)
+        cout << "节点数量少于2,无法发送数据包" <<endl;
+    else{
+        auto Select = SelectNodes(totalNodes);
+        cout << "First Selection: ";
+        for (int i : Select.first)
         {
-            if(i != j && !(i == 0 && j==1)){
-                Simulator::Schedule(startTransmissionTime, &StartSpecificTransmission, i, j, Nodes, Nodes, port, transmissionDuration);            
+            cout << i << " ";
+        }
+        cout << "\nSecond Selection: ";
+        for (int i : Select.second)
+        {
+            cout << i << " ";
+        }
+        cout<< endl;
+        for (int i : Select.first)
+        {
+            for (int j : Select.second)
+            {
+                Simulator::Schedule(startTransmissionTime, &StartSpecificTransmission, i, j, Nodes, Nodes, port, transmissionDuration);
             }
         }
     }
     Simulator::Schedule(Seconds(sendtimeinterval), &StartTransmit, Nodes, port);
 }
+
 
 int weatherType(string Weather){
     int weather;
@@ -1607,6 +1643,36 @@ int weatherType(string Weather){
     }
     return weather;
 }
+
+//参数修改反馈
+void ChangeAttribute(string type, string sentence){
+    if(type == "network"){
+        if(!changechannel)
+            sentence = "信道相同，不执行信道切换，其余网络可编排参数修改成功！";
+        stringstream ss;
+        ss << "{";  // 开始一个 JSON 对象
+        // 添加各种数据到 JSON 对象
+        ss << "\"PkgType\": \"004\",";
+        ss << "\"ArrangeType\": \"" << type << "\", ";
+        ss << "\"Message\": \"" << sentence << "\"";
+        ss << "}";  // 结束 JSON 对象        
+        string jsonString = ss.str();  // 将 stringstream 转换为 string
+        cout << jsonString << endl;
+        stringQueue.push(jsonString);
+    } else if (type == "electromagnetism"){
+        stringstream ss;
+        ss << "{";  // 开始一个 JSON 对象
+        // 添加各种数据到 JSON 对象
+        ss << "\"PkgType\": \"004\",";
+        ss << "\"ArrangeType\": \"" << type << "\", ";
+        ss << "\"Message\": \"" << sentence << "\"";
+        ss << "}";  // 结束 JSON 对象        
+        string jsonString = ss.str();  // 将 stringstream 转换为 string
+        cout << jsonString << endl;
+        stringQueue.push(jsonString);
+    }
+}
+
 
 //判断节点当前是否处于发送数据包的繁忙状态 1为忙，0为空闲
 int isBusy(double nowtime){
@@ -1724,8 +1790,11 @@ void ScheduleWaveformGeneratorEvents(NetDeviceContainer& devices, Time startTime
 
 //单音干扰
 void CreateSingleToneInterference(){
+    uint8_t channel = GetCurrentChannel();
     // 创建单音干扰
-    Ptr<SpectrumModel> DisturbBand = Create<SpectrumModel>(allBands[2]);
+    cout << "---------------单音干扰添加到网络中---------------" << endl;
+    Ptr<SpectrumModel> DisturbBand = Create<SpectrumModel>(allBands[channel-1]);
+    cout << "添加到" << allBands[channel-1][0].fc <<endl;
     interferingNode.Create(1);
     Ptr<SpectrumValue> wgPsd = Create<SpectrumValue>(DisturbBand);
     *wgPsd = 0.00000001 / 20e6;
@@ -1745,13 +1814,15 @@ void CreateSingleToneInterference(){
     Time newTime = currentTime + Seconds(60.0);
 
     ScheduleWaveformGeneratorEvents(waveformGeneratorDevices, currentTime, newTime); 
+    Simulator::Schedule(Seconds(3), &ChangeAttribute, "electromagnetism", "单音干扰添加成功!");
 }
 
 //多音干扰
 void CreateMultiToneInterference(){
     // 创建多个频率带
-    Ptr<SpectrumModel> disturbBand2 = Create<SpectrumModel>(allBands[2]);
-    Ptr<SpectrumModel> disturbBand4 = Create<SpectrumModel>(allBands[4]);
+    uint8_t channel = GetCurrentChannel();
+    Ptr<SpectrumModel> disturbBand2 = Create<SpectrumModel>(allBands[channel - 1]);
+    Ptr<SpectrumModel> disturbBand4 = Create<SpectrumModel>(allBands[channel % 13 +1]);
 
     interferingNode.Create(2); // 创建两个干扰节点
 
@@ -1780,10 +1851,12 @@ void CreateMultiToneInterference(){
 
     ScheduleWaveformGeneratorEvents(waveformGeneratorDevices2, currentTime, newTime);
     ScheduleWaveformGeneratorEvents(waveformGeneratorDevices4, currentTime + Seconds(2), newTime + Seconds(2));
+    Simulator::Schedule(Seconds(5), &ChangeAttribute, "electromagnetism", "多音干扰添加完成!");
 }
 
 //梳状谱干扰
 void CreateCombSpectrumInterference(){
+    
     // 创建多个频率带
     Ptr<SpectrumModel> disturbBand3 = Create<SpectrumModel>(allBands[3]);
     Ptr<SpectrumModel> disturbBand4 = Create<SpectrumModel>(allBands[4]);
@@ -1846,14 +1919,15 @@ void CreateCombSpectrumInterference(){
     ScheduleWaveformGeneratorEvents(waveformGeneratorDevices8, currentTime + Seconds(5), newTime + Seconds(5));
     ScheduleWaveformGeneratorEvents(waveformGeneratorDevices9, currentTime + Seconds(6), newTime + Seconds(6));
     ScheduleWaveformGeneratorEvents(waveformGeneratorDevices10, currentTime + Seconds(7), newTime + Seconds(7));
+    Simulator::Schedule(Seconds(10), &ChangeAttribute, "electromagnetism", "梳状谱噪声干扰添加成功！");
 }
 
-// 部分频带噪声干扰
+//部分频带噪声干扰
 void CreatePartialBandNoiseJamming() {
     // 创建频带信息
     BandInfo band1;
-    band1.fl = 2430e6;//频率下限
-    band1.fh = 2450e6; // 频率上限
+    band1.fl = 2412e6;//频率下限
+    band1.fh = 2472e6; // 频率上限
     band1.fc = (band1.fl + band1.fh) / 2; //频率中心
 
     Bands bands;
@@ -1866,8 +1940,8 @@ void CreatePartialBandNoiseJamming() {
     // 创建噪声调频干扰节点
     Ptr<SpectrumValue> wgPsd = Create<SpectrumValue>(spectrumModel);
     Ptr<UniformRandomVariable> randVar = CreateObject<UniformRandomVariable>();
-    randVar->SetAttribute("Min", DoubleValue(0.000001 / 20e6));
-    randVar->SetAttribute("Max", DoubleValue(0.00001 / 20e6)); // 调整最大值根据需要
+    randVar->SetAttribute("Min", DoubleValue(1e-10 / 20e6)); //可使全局信噪比降至16左右
+    randVar->SetAttribute("Max", DoubleValue(1.5e-10 / 20e6)); // 调整最大值根据需要
     *wgPsd = randVar->GetValue();
 
     WaveformGeneratorHelper waveformGeneratorHelper;
@@ -1880,12 +1954,13 @@ void CreatePartialBandNoiseJamming() {
 
     // 调度仿真事件来启动和停止波形生成器
     Time currentTime = Simulator::Now();
-    Time newTime = currentTime + Seconds(15.0);
+    Time newTime = currentTime + Seconds(60.0);
 
     ScheduleWaveformGeneratorEvents(waveformGeneratorDevices, currentTime, newTime);
+    Simulator::Schedule(Seconds(3), &ChangeAttribute, "electromagnetism", "部分频带噪声干扰添加完成!");
 }
 
-// 噪声调频干扰
+//噪声调频干扰
 void CreateNoiseFrequencyJamming() {
     //创建频带信息
     BandInfo band1,band2,band3;
@@ -1938,6 +2013,7 @@ void CreateNoiseFrequencyJamming() {
     ScheduleWaveformGeneratorEvents(waveformGeneratorDevices1, currentTime, newTime);
     ScheduleWaveformGeneratorEvents(waveformGeneratorDevices2, currentTime, newTime);
     ScheduleWaveformGeneratorEvents(waveformGeneratorDevices3, currentTime, newTime);
+    Simulator::Schedule(Seconds(3), &ChangeAttribute, "electromagnetism", "噪声调频类干扰添加成功!");
 }
 //干扰相关代码
 
@@ -1950,6 +2026,43 @@ string RemoveOf(const string& input) {
     }
     return output; 
 }
+
+// void ModifyNetwork(json jsonData) {
+//     int intervaltime = 0;
+//     for (const auto& param : jsonData["Params"]) {
+//         cout << "进行网络参数修改" << endl;
+//         auto antennasCount = to_string(param["AntennasCount"]);
+//         auto channel = RemoveOf(to_string(param["Channel"]));
+//         auto encode = RemoveOf(to_string(param["Encode"]));
+//         auto encodeRate = RemoveOf(to_string(param["EncodeRate"]));
+//         auto maxReceivingSpace = to_string(param["MaxReceivingSpace"]);
+//         auto maxTransmissionRate = RemoveOf(to_string(param["MaxTransmissionRate"]));
+//         auto maxTransmissionSpace = to_string(param["MaxTransmissionSpace"]);
+//         auto nodeID = RemoveOf(to_string(param["NodeID"]));
+//         auto power = to_string(param["Power"]);
+//         auto rxGain = to_string(param["ReceivingGain"]);
+//         auto txGain = to_string(param["TransmissionGain"]);
+//         vector<string> data;
+//         data.push_back(nodeID);
+//         data.push_back(antennasCount);
+//         data.push_back(rxGain);
+//         data.push_back(txGain);
+//         data.push_back(maxTransmissionSpace);
+//         data.push_back(maxReceivingSpace);
+//         data.push_back(channel);
+//         data.push_back(power);
+//         double nowtime = Simulator::Now().GetSeconds();//记录调用时间
+//         int number = static_cast<int>(jsonData["Params"].size());
+//         if (isBusy(nowtime)) {
+//             cout << fmod(nowtime, 60.0) << "当前时间不支持修改，请稍后再试！" << endl;
+//         } else {
+//             Simulator::Schedule(MilliSeconds(1+10*intervaltime), &ConfigureWifiPhyAttributes, data, intervaltime, number);
+//             intervaltime++;
+//             Simulator::Schedule(MilliSeconds(1+10*intervaltime), &ConfigureEncoding, nodeID, encode, encodeRate, maxTransmissionRate);
+//             Simulator::Schedule(MilliSeconds(30*number + 100), &ChangeAttribute, "network", nodeID + "的网络可编排参数修改完成！");
+//         }
+//     }
+// }
 
 void ModifyNetwork(json jsonData) {
     int intervaltime = 0;
@@ -1976,12 +2089,15 @@ void ModifyNetwork(json jsonData) {
         data.push_back(channel);
         data.push_back(power);
         double nowtime = Simulator::Now().GetSeconds();//记录调用时间
+        int number = static_cast<int>(jsonData["Params"].size());
         if (isBusy(nowtime)) {
             cout << fmod(nowtime, 60.0) << "当前时间不支持修改，请稍后再试！" << endl;
         } else {
-            Simulator::Schedule(MilliSeconds(100+100*intervaltime), &ConfigureWifiPhyAttributes, data, intervaltime, static_cast<int>(jsonData["Params"].size()));
+            Simulator::Schedule(MilliSeconds(1+10*intervaltime), &ConfigureWifiPhyAttributes, data, intervaltime, number);
             intervaltime++;
-            Simulator::Schedule(MilliSeconds(100+100*intervaltime), &ConfigureEncoding, nodeID, encode, encodeRate, maxTransmissionRate);
+            Simulator::Schedule(MilliSeconds(1+10*intervaltime), &ConfigureEncoding, nodeID, encode, encodeRate, maxTransmissionRate);
+             if(intervaltime == number)
+                Simulator::Schedule(MilliSeconds(30*number + 100), &ChangeAttribute, "network", "网络可编排参数修改完成！");
         }
     }
 }
@@ -1994,8 +2110,9 @@ if(!spectrumPhy->IsStateSwitching()){
 }
 }
 
+//切换所有信道
 void changeAllChannel(NodeContainer nodes, int id){
-    for(int i=0; i<nodes.GetN(); i++){
+    for(uint32_t i=0; i<nodes.GetN(); i++){
         Ptr<Node> node = nodes.Get(i);
         Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0));
         Ptr<WifiPhy> wifiPhy = wifiDevice->GetPhy();
@@ -2003,6 +2120,8 @@ void changeAllChannel(NodeContainer nodes, int id){
     }
 
 }
+
+//查看文件夹内容
 int checkFolder(std::string folderPath){
     // 检查文件夹是否存在
     if (fs::exists(folderPath)) {
@@ -2021,65 +2140,145 @@ int checkFolder(std::string folderPath){
     }
 }
 
-void deleteFilesInFolder(const std::string& folderPath) {
-    // 遍历文件夹
-    for (const auto& entry : fs::directory_iterator(folderPath)) {
-        // 判断当前条目是否为文件
-        if (entry.is_regular_file()) {
-            // 删除文件
-            fs::remove(entry.path());
-            std::cout << "Deleted file: " << entry.path() << std::endl;
-        }
-    }
+//切换一个功率
+void SetTxPower(Ptr<Node> node, double txPower) {
+    Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0)); // 假设wifi设备是第一个设备
+    Ptr<SpectrumWifiPhy> phy = DynamicCast<SpectrumWifiPhy>(wifiDevice->GetPhy());
+    phy->SetTxPowerStart(txPower);
+    phy->SetTxPowerEnd(txPower);
 }
 
-// 输出节点数据的函数
-void PrintNodeVector() {
-    std::string folder = "/home/ns3/project/electric";
-    // cout << "Node Vector at " << Simulator::Now().GetSeconds() << " seconds:" << endl;
-    auto now = chrono::system_clock::now();
-    long long time = chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()).count();
-    Ptr<Node> node = nodes.Get(0);
-    Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0));
-    Ptr<WifiPhy> wifiPhy_tmp = wifiDevice->GetPhy();
-    for (const auto &node : nodeVector) {
-        // cout << "Node ID: " << node.nodeID << ", Throughput: " << node.throughput
-        //      << ", SNR: " << node.signalToNoise << ", Packet Size: " << node.packetSize
-        //      << ", Last Update Time: " << time - node.lastUpdateTime << ", Delay: " << node.delay
-        //      << ", Activity: " << node.activity << endl;
-        // cout << "--------------------------------------------------------------------------" << endl;
-        if (totalSnr == 0){
-            int i = checkFolder(folder);
-            if(i){
-                //向python发送当前状态
-                msgInterface->CppSendBegin();
-                msgInterface->GetCpp2PyStruct()->action = 3;//action-3表示调用电磁优化
-                msgInterface->GetCpp2PyStruct()->current_channel = wifiPhy_tmp->GetChannelNumber();
-                msgInterface->GetCpp2PyStruct()->time = Simulator::Now().GetSeconds();
-                msgInterface->CppSendEnd();
-                //接受python发来的消息
-                msgInterface->CppRecvBegin();
-                next_channel = msgInterface->GetPy2CppStruct()->next_channel;
-                msgInterface->CppRecvEnd();
-                deleteFilesInFolder(folder);
-                changeAllChannel(nodes, next_channel);
-            }
-        }
-    }
 
-    // 重新安排下一个输出
-    Simulator::Schedule(Seconds(1.0), &PrintNodeVector);
+//切换所有功率
+void PowerUpAll(NodeContainer nodes){
+    cout << "---------全局功率增大开始---------" << endl;
+    for(uint32_t i=0; i<nodes.GetN(); i++){
+        Ptr<Node> node = nodes.Get(i);
+        double pw = NodePower(node);
+        Simulator::Schedule(MilliSeconds(10+i*5), &SetTxPower, node, pw + 10.0);
+    }
+    cout << "---------全局功率增大结束---------" << endl;
+
+}
+
+// 切换所有MCS
+void changeAllMCS(NodeContainer nodes, string dataRate){
+    for(uint32_t i=0; i<nodes.GetN(); i++){
+        Ptr<Node> node = nodes.Get(i);
+        Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0));
+        // 获取指定节点上的 Wi-Fi 网络设备
+        NS_ASSERT(wifiDevice != nullptr); // 确保设备确实是 Wi-Fi 设备
+        // 获取 Remote Station Manager
+        Ptr<WifiRemoteStationManager> stationManager = wifiDevice->GetRemoteStationManager();
+        NS_ASSERT(stationManager->GetInstanceTypeId() == ConstantRateWifiManager::GetTypeId());
+        // 将 Remote Station Manager 强制转换为 ConstantRateWifiManager
+        Ptr<ConstantRateWifiManager> constantRateManager = DynamicCast<ConstantRateWifiManager>(stationManager);
+        // 设置新的速率
+        constantRateManager->SetAttribute("DataMode", StringValue(dataRate));
+        constantRateManager->SetAttribute("ControlMode", StringValue("HtMcs0"));
+        cout << Simulator::Now().GetSeconds() <<"ChangeSingleNodeDataRate修改成功"<<endl;
+        }
+
+}
+
+
+// void deleteFilesInFolder(const std::string& folderPath) {
+//     // 遍历文件夹
+//     for (const auto& entry : fs::directory_iterator(folderPath)) {
+//         // 判断当前条目是否为文件
+//         if (entry.is_regular_file()) {
+//             // 删除文件
+//             fs::remove(entry.path());
+//             std::cout << "Deleted file: " << entry.path() << std::endl;
+//         }
+//     }
+// }
+
+void StartSet(){
+    msgInterface->CppRecvBegin();
+    opt = msgInterface->GetPy2CppStruct()->opt;
+    msgInterface->CppRecvEnd();
+    cout << "收到策略 ：" << opt << endl;
+    if (opt == 3){//速度优先
+        changeAllMCS(nodes, "HtMcs7");
+    }else
+    if (opt == 4){//信号质量优先
+        PowerUpAll(nodes);
+    }
 }
 
 //每隔一段时间检查节点的更新时间
 void checkNodeState(){
+    auto now = chrono::system_clock::now();
+    long long time = chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()).count();
     for (const auto &node : nodeVector) {
-            cout << "Node ID: " << node.nodeID << ", Throughput: " << node.throughput
-                << ", SNR: " << node.signalToNoise << ", Packet Size: " << node.packetSize
-                << ", Last Update Time: " << node.lastUpdateTime << ", Delay: " << node.delay
-                << ", Activity: " << node.activity << endl;
-            cout << "--------------------------------------------------------------------------" << endl;
+            // cout << "Node ID: " << node.nodeID << ", Throughput: " << node.throughput
+            //     << ", SNR: " << node.signalToNoise << ", Packet Size: " << node.packetSize
+            //     << ", Last Update Time: " << node.lastUpdateTime << ", Delay: " << node.delay
+            //     << ", Activity: " << node.activity << endl;
+            // cout << time-node.lastUpdateTime <<"--------------------------------------------------------------------------" << endl;
         }
+}
+
+// 监听网络状态
+void PrintNodeVector() {
+    std::string folder = "/home/ns3/project/electric";
+
+    // for (const auto &node : nodeVector) {
+    //     if(time - node.lastUpdateTime);
+    // }
+    // checkNodeState();
+    if (snrAverage < 18.0 || snrAverage == 0){
+        cout << "当前网络信噪比为：" << snrAverage << endl;
+        int i = checkFolder(folder);
+        if (i){
+            msgInterface->CppSendBegin();
+            msgInterface->GetCpp2PyStruct()->action = 3;//action-3表示调用电磁优化
+            msgInterface->GetCpp2PyStruct()->current_channel = GetCurrentChannel();//获取当前信道
+            msgInterface->GetCpp2PyStruct()->time = Simulator::Now().GetSeconds();//获取当前仿真事件
+            msgInterface->CppSendEnd();
+
+            msgInterface->CppRecvBegin();
+            opt = msgInterface->GetPy2CppStruct()->opt;
+            msgInterface->CppRecvEnd();
+
+            if (opt == 0){//单音干扰
+                msgInterface->CppRecvBegin();
+                next_channel = msgInterface->GetPy2CppStruct()->next_channel;
+                msgInterface->CppRecvEnd();
+                // deleteFilesInFolder(folder);
+                if(next_channel != GetCurrentChannel()){changeAllChannel(nodes, next_channel);} 
+            }else
+            if (opt == 1){//部分频带噪声干扰,噪声调频干扰,梳状谱干扰
+                PowerUpAll(nodes);
+                msgInterface->CppRecvBegin();
+                next_channel = msgInterface->GetPy2CppStruct()->next_channel;
+                msgInterface->CppRecvEnd();
+                // deleteFilesInFolder(folder);
+                if(next_channel != GetCurrentChannel()){changeAllChannel(nodes, next_channel);}
+            }else
+            if (opt == 2){//多音干扰
+                PowerUpAll(nodes);
+            }
+            }
+        }
+    // 重新安排下一个输出
+    Simulator::Schedule(Seconds(1.0), &PrintNodeVector);
+}
+
+
+
+//复制文件
+void CopyFile(string source, string destination){
+    fs::path sourcePath = source;
+    fs::path destinationPath = destination;
+    try {
+        // 复制文件
+        fs::copy(sourcePath, destinationPath, fs::copy_options::overwrite_existing);
+        std::cout << "复制文件从 " << source << "到" << destination << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
 }
 
 void ModifyElectromagnetism(json jsonData) {
@@ -2091,18 +2290,23 @@ void ModifyElectromagnetism(json jsonData) {
         } else {
             if (interfereType=="CSNJ") {
                 CreateCombSpectrumInterference();
+                Simulator::Schedule(Seconds(1), &CopyFile, database+"/elec/"+interfereType+"/01/01.png", electric);
                 cout << "梳状谱噪声干扰添加成功" << endl;
             } else if (interfereType=="CW") {
                 CreateSingleToneInterference();
+                Simulator::Schedule(Seconds(1), &CopyFile, database+"/elec/"+interfereType+"/01/01.png", electric);
                 cout << "单音干扰添加成功" << endl;
             } else if (interfereType=="MTJ") {
                 CreateMultiToneInterference();
+                Simulator::Schedule(Seconds(1), &CopyFile, database+"/elec/"+interfereType+"/01/01.png", electric);
                 cout << "多音干扰添加成功" << endl;
             } else if (interfereType=="PBNJ") {
                 CreatePartialBandNoiseJamming();
+                Simulator::Schedule(Seconds(1), &CopyFile, database+"/elec/"+interfereType+"/01/01.png", electric);
                 cout << "部分频带噪声干扰" << endl;
             } else if (interfereType=="NFM") {
                 CreateNoiseFrequencyJamming();
+                Simulator::Schedule(Seconds(1), &CopyFile, database+"/elec/"+interfereType+"/01/01.png", electric);
                 cout << "噪声调频类干扰添加成功" << endl;
             }
         }
@@ -2112,7 +2316,7 @@ void ModifyElectromagnetism(json jsonData) {
 void ReceiveOutPacket (Ptr<Socket> socket){
     try{
         cout << "收到外部传参" << endl;
-        Ptr<Packet> packet = socket->Recv (1472,0);
+        Ptr<Packet> packet = socket->Recv (8492,0);
         uint8_t *buffer = new uint8_t[packet->GetSize ()-1];
         packet->CopyData(buffer, packet->GetSize ());
         string receiveData(reinterpret_cast<char*>(buffer), packet->GetSize());
@@ -2133,28 +2337,8 @@ void ReceiveOutPacket (Ptr<Socket> socket){
     }
 }
 
-//更新节点活跃度
-void updataNodeActivity(string nodeId, int activity){
-    for(auto nodevector : nodeVector){
-        if(nodevector.nodeID == nodeId){
-            nodevector.activity = activity;
-            idToActivityMap[nodeId] = activity;
-        }
-    }
-}
 
-//计算当前时间的平均信噪比
-void averageSnr(){
-    double current_time = Simulator::Now().GetSeconds();
-    double average = totalSnr/totalPackets;
-    if(totalPackets > 0)
-        cout << current_time-1.0 << "s到" << current_time << "s内的整个网络收到" << totalPackets << "个包，平均信噪比(snr): " << average << "dB" << endl;
-    else
-        cout << current_time-1.0 << "s到" << current_time << "s内的整个网络的平均信噪比(snr): " << "0dB" << endl;
-    totalSnr = 0;
-    totalPackets = 0;
-    Simulator::Schedule(Seconds(1.0), &averageSnr);
-}
+
 
 int main (int argc, char *argv[])
 {
@@ -2193,12 +2377,12 @@ int main (int argc, char *argv[])
     //输出内容保存的json文件
     outputFile.open("node-movement-log.json");
     dataputFile.open("data-transmit-log.json");
-    dataActiviaty.open("data-activiaty-log.json");
+    dataActivity.open("data-activity-log.json");
     dataAi.open("activity-data-log.json");
     fstream rewriteFile("node-movement-log.json", ios::in | ios::out | ios::ate);
     fstream rewriteDataFile("data-transmit-log.json", ios::in | ios::out | ios::ate);
-    fstream rewriteDataActiviatyFile("data-activiaty-log.json", ios::in | ios::out | ios::ate);
-    fstream rewriteDataActivityFile("activity-data-log.json", ios::in | ios::out | ios::ate);
+    fstream rewriteDataActivityFile("data-activity-log.json", ios::in | ios::out | ios::ate);
+    fstream rewriteActivityFile("activity-data-log.json", ios::in | ios::out | ios::ate);
 
     //读取位置，天气信息
     vector<DataRow> fileData = ReadCsvFile("/home/ns3/project/red_info.txt");
@@ -2405,16 +2589,15 @@ int main (int argc, char *argv[])
     } 
     
 
-    // dataa.monitor = dataa.flowmon.InstallAll();
-    // dataa.totalDelaySum = 0;
-    // dataa.totalRxBytes = 0;
-    // dataa.totalRxPackets = 0;
-    // dataa.totallostPackets = 0;
-    // dataa.totalTxPackets = 0;
-    // Simulator::Schedule(Seconds(0.0), &Throughput);
+    flowdata.monitor = flowdata.flowmon.InstallAll();
+    flowdata.totalDelaySum = 0;
+    flowdata.totalRxBytes = 0;
+    flowdata.totalRxPackets = 0;
+
+    Simulator::Schedule(Seconds(2.0), &Throughput);
 
     // 初始化节点
-    for (int i = 0; i < nodes.GetN(); ++i) {
+    for (uint32_t i = 0; i < nodes.GetN(); ++i) {
         double throughput = 0.0;     // 设置初始值
         double signalToNoise = 0.0;  // 设置初始值
         int packetSize = 0;          // 设置初始值
@@ -2428,22 +2611,23 @@ int main (int argc, char *argv[])
     }
 
 
-    Simulator::Schedule(Seconds(0.0), &startDataActiviatyInfo);
-    Simulator::Schedule(Seconds(25.0), &stopDataActiviatyInfo, ref(rewriteDataActivityFile), ref(dataActiviaty), ref(dataAi));
+    Simulator::Schedule(Seconds(0.0), &startDataActivityInfo);
+    Simulator::Schedule(Seconds(100.0), &StartSet);
+    Simulator::Schedule(Seconds(25.0), &stopDataActivityInfo, ref(rewriteDataActivityFile), ref(dataActivity), ref(dataAi));
 
-    Simulator::Schedule(Seconds(0.0), &dataActiviatyInfoFile, nodes, ref(dataActiviaty));
+    Simulator::Schedule(Seconds(0.0), &dataActivityInfoFile, nodes, ref(dataActivity));
     Simulator::Schedule(Seconds(0.0), &LogJsonPosition, nodes, ref(outputFile));
     //输出每个节点的状态
     Simulator::Schedule(Seconds(0.0), &PrintNodeVector);
 
     Simulator::Schedule(Seconds(30), &ClearFile, ref(outputFile), "node-movement-log.json");//设置刷新文件的时间
-    // Simulator::Schedule(Seconds(30), &ClearFile, ref(dataActiviaty), "data-activiaty-log.json");//设置刷新文件的时间
+    // Simulator::Schedule(Seconds(30), &ClearFile, ref(dataActivity), "data-activity-log.json");//设置刷新文件的时间
     Simulator::Schedule(Seconds(120), &ClearFile, ref(dataputFile), "data-transmit-log.json");//设置刷新文件的时间
 
 
-    Simulator::Schedule(Seconds(15.0), &printDataRecords);
+    // Simulator::Schedule(Seconds(15.0), &printDataRecords);
     Simulator::Schedule(Seconds(15.0), &CalculateAndPrintThroughput);
-    Simulator::Schedule(Seconds(15.0), &averageSnr);
+    Simulator::Schedule(Seconds(0.0), &averageSnr);
 
     Simulator::Schedule(Seconds(sendtimeinterval), &StartTransmit, nodes, port);
 
@@ -2458,12 +2642,12 @@ int main (int argc, char *argv[])
         return -1;
     }
 
-    if (!rewriteDataActiviatyFile.is_open()) {
+    if (!rewriteDataActivityFile.is_open()) {
         std::cerr << "无法打开文件3。" << std::endl;
         return -1;        
     }
 
-    if (!rewriteDataActivityFile.is_open()) {
+    if (!rewriteActivityFile.is_open()) {
         std::cerr << "无法打开文件4。" << std::endl;
         return -1;        
     }
@@ -2517,7 +2701,8 @@ int main (int argc, char *argv[])
 
     rewriteFile.close();
     rewriteDataFile.close();
-    rewriteDataActiviatyFile.close();
+    rewriteDataActivityFile.close();
+    rewriteActivityFile.close();
 
     return 0;
 }
