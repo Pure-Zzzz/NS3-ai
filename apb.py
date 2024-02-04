@@ -98,6 +98,8 @@ try:
                 delete_files_in_folder("/home/ns3/project/electric/*")
                 msgInterface.PySendBegin()
                 msgInterface.GetPy2CppStruct().opt = 0
+                msgInterface.PySendEnd()
+                msgInterface.PySendBegin()
                 next_channel = (current_channel+random.randint(2,12))%13+1 #随机切换信道
                 msgInterface.GetPy2CppStruct().next_channel = next_channel
                 msgInterface.PySendEnd()
@@ -115,17 +117,20 @@ try:
                 delete_files_in_folder("/home/ns3/project/electric/*")
                 msgInterface.PySendBegin()
                 msgInterface.GetPy2CppStruct().opt = 2
+                msgInterface.PySendEnd()
+                msgInterface.PySendBegin()
                 next_channel = (current_channel+random.randint(2,12))%13+1 #随机切换信道
                 msgInterface.GetPy2CppStruct().next_channel = next_channel
                 msgInterface.PySendEnd()
+
                 write_opt('time:{}----检测到多音干扰，调用电磁干扰优化策略：执行信道切换 {}信道---->{}信道'.format(time,current_channel,next_channel))
         elif action==4:
-            print(1)
+            execute_cluster_operations()
             #执行活跃度调整
 
         
         
-        # snr = msgInterface.GetCpp2PyStruct().snr
+        {# snr = msgInterface.GetCpp2PyStruct().snr
         # delay = msgInterface.GetCpp2PyStruct().delay
         # tput = msgInterface.GetCpp2PyStruct().tput
         # current_power = msgInterface.GetCpp2PyStruct().current_power
@@ -152,7 +157,8 @@ try:
         # msgInterface.PySendBegin()
         # msgInterface.GetPy2CppStruct().next_power = power_ch[index]
         # msgInterface.GetPy2CppStruct().next_mcs = mcs
-        # msgInterface.PySendEnd()
+        # msgInterface.PySendEnd()}
+        }
 
 except Exception as e:
     exc_type, exc_value, exc_traceback = sys.exc_info()
