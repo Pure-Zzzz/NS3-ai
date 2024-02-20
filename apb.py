@@ -19,7 +19,7 @@ from DQN import DeepQAgent
 from env_init.weather_pred import predict
 import subprocess
 from UserActionSort import execute_cluster_operations
-
+from env_init import elec_pred
 def delete_files_in_folder(path):
     try:
         print("python端：删除{}路径下文件".format(path))
@@ -92,7 +92,9 @@ try:
             #执行抗电磁
             #调用识别算法
             # elc_class = 'SNM'
-            if 1:
+            elec_type = elec_pred.predict("/home/ns3/project/electric/01.png")
+            print("识别到干扰类型:  {}".format(elec_type))
+            if elec_type == "CW":
                 #单音干扰，直接切换信道
                 print('单音干扰优化')
                 delete_files_in_folder("/home/ns3/project/electric/*")
@@ -100,11 +102,11 @@ try:
                 msgInterface.GetPy2CppStruct().opt = 0
                 msgInterface.PySendEnd()
                 msgInterface.PySendBegin()
-                next_channel = (current_channel+random.randint(2,12))%13+1 #随机切换信道
+                next_channel = (current_channel+4)%13+1 #随机切换信道
                 msgInterface.GetPy2CppStruct().next_channel = next_channel
                 msgInterface.PySendEnd()
                 write_opt('time:{}----检测到单音干扰，调用电磁干扰优化策略：执行信道切换 {}信道---->{}信道'.format(time,current_channel,next_channel))
-            elif '部分频带噪声干扰,噪声调频干扰,梳状谱干扰':
+            elif elec_type == "NBNJ" or elec_type == "NFM" or elec_type == "PBNJ" :
                 #部分频带噪声干扰--提高功率
                 print('部分频带噪声干扰')
                 delete_files_in_folder("/home/ns3/project/electric/*")
@@ -112,7 +114,7 @@ try:
                 msgInterface.GetPy2CppStruct().opt = 1 
                 msgInterface.PySendEnd()                
                 write_opt('time:{}----检测到部分频带噪声干扰，调用电磁干扰优化策略：功率提升')
-            elif '多音干扰':
+            elif elec_type == "MTJ":
                 print('多音干扰优化')
                 delete_files_in_folder("/home/ns3/project/electric/*")
                 msgInterface.PySendBegin()
@@ -122,10 +124,15 @@ try:
                 next_channel = (current_channel+random.randint(2,12))%13+1 #随机切换信道
                 msgInterface.GetPy2CppStruct().next_channel = next_channel
                 msgInterface.PySendEnd()
-
                 write_opt('time:{}----检测到多音干扰，调用电磁干扰优化策略：执行信道切换 {}信道---->{}信道'.format(time,current_channel,next_channel))
         elif action==4:
-            execute_cluster_operations()
+            try:
+                execute_cluster_operations()
+            except Exception as e:
+                print("An error occurred while finding closest sample index:", str(e))
+            # msgInterface.PySendBegin()
+            # msgInterface.GetPy2CppStruct().opt = 2
+            # msgInterface.PySendEnd()
             #执行活跃度调整
 
         

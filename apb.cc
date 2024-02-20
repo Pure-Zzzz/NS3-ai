@@ -134,7 +134,7 @@ double referenceLoss=50;
 double referenceDistance=2.95;
 double pathLossExponent=2.95;
 bool changechannel = true;
-
+std::vector<std::vector<int>> actOpt;
 // 存储所有频带的向量
 vector<Bands> allBands;
 // 2.4GHz WiFi频段的起始频率
@@ -855,6 +855,37 @@ void ModifyJsonFile(std::fstream& file) {
     }
 }
 
+//用户活跃度返回值读取
+std::vector<std::vector<int>> readDataFromFile(const std::string& filename) {
+    cout << "readDataFromFile" << endl;
+    std::vector<std::vector<int>> data;
+    std::ifstream file(filename);
+
+    if (file.is_open()) {
+        std::string line;
+        while (std::getline(file, line)) {
+            // 从当前行中去掉方括号
+            line.erase(std::remove(line.begin(), line.end(), '['), line.end());
+            line.erase(std::remove(line.begin(), line.end(), ']'), line.end());
+            std::vector<int> row;
+            std::stringstream ss(line);
+            std::string num;
+            // 用逗号分割整数
+
+            while (std::getline(ss, num, ',')) {
+                row.push_back(std::stoi(num));
+            }
+            data.push_back(row);
+        }
+        file.close();
+    } else {
+        std::cerr << "无法打开文件!" << std::endl;
+    }
+    cout << "------readDataFromFile End------" << endl;
+    return data;
+}
+
+//activity文件创建
 void ClearActivityFile(ofstream& outputFile, ofstream& inputFile) {
     outputFile.open("data-activity-log.json", ofstream::out | ofstream::trunc); // 以截断方式打开文件
     if (outputFile.is_open()) {
@@ -873,10 +904,18 @@ void ClearActivityFile(ofstream& outputFile, ofstream& inputFile) {
 
     src.close();
     dest.close();
+    if (activity == 0){
+        cout << "CPP:  <ClearActivityFile()>  发送用户活跃度指令" <<endl;
+        msgInterface->CppSendBegin();
+        msgInterface->GetCpp2PyStruct()->action = 4;//action-3表示调用 用户活跃度
+        msgInterface->CppSendEnd();
+    }
 
     outputFile.open("data-activity-log.json");
     inputFile.open("activity-data-log.json", std::ios::out | std::ios::app);
     outputFile << "[" << endl;
+    actOpt = readDataFromFile("/home/ns3/project/optimize/output_opt.txt");
+
 
 }
 
@@ -1090,7 +1129,7 @@ void ChangeChannel(Ptr<Node> node, Ptr<WifiPhy> spectrumPhy, uint16_t channelId)
             if(channelId < 36){
                 spectrumPhy->SetAttribute("ChannelSettings",StringValue(string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}"))); // 设置新的频道号
             } else {
-                spectrumPhy->SetAttribute("ChannelSettings",StringValue(string("{" + std::to_string(channelId) +", 20, BAND_5GHZ, 0}"))); // 设置新的频道号
+                spectrumPhy->SetAttribute("ChannelSettings",StringValue(string("{" + std::to_string(149) +", 20, BAND_5GHZ, 0}"))); // 设置新的频道号
             }
             cout << nowtime << " 节点: " << FindIdFromMap(node) <<"的信道修改成功"<<endl;
         }else {
@@ -1654,7 +1693,6 @@ void StartSpecificTransmission(uint32_t sourceIndex, uint32_t targetIndex, NodeC
 // void MonitorSnifferRx (Ptr<Node> node, Ptr<const Packet> packet, uint16_t channelFreqMhz, WifiTxVector txVector, 
 //                         MpduInfo mpduInfo, SignalNoiseDbm signalNoise, uint16_t frequency) {
 //     double snr = signalNoise.signal - signalNoise.noise;
-
 //     NodeContainer tempNodes;
 //     tempNodes.Add(node);
 //     auto now = chrono::system_clock::now();
@@ -1668,12 +1706,9 @@ void StartSpecificTransmission(uint32_t sourceIndex, uint32_t targetIndex, NodeC
 //     // 使用字符串流进行转换
 //     stringstream ss;
 //     ss << txVector.GetMode();
-    
 //     string wifiModeAsString = ss.str(); // 字符串表示
-
 //     totalSnr += snr;
 //     totalPackets += 1;
-
 //     throughoutputByModelId[FindIdFromMap(node)]+=packet->GetSize ();
 //     if(activity == 1)
 //         Simulator::Schedule(Seconds(0.0),&dataActivityInfoFile,tempNodes,ref(dataActivity));
@@ -1770,7 +1805,7 @@ int weatherType(string Weather){
         weather = 2;
     }else if(Weather == "snowy"){
         weather = 3;
-    }else if(Weather == "thunder"){
+    }else if(Weather == "thunderstorm"){
         weather = 4;
     }else{
         weather = 1;
@@ -1836,7 +1871,6 @@ void ChangeAttribute(string type, string sentence){
         outQueue.push(jsonString);
     }
 }
-
 
 
 //判断节点当前是否处于发送数据包的繁忙状态 1为忙，0为空闲
@@ -1987,16 +2021,13 @@ void CreateMultiToneInterference(){
     // 创建多个频率带
     uint8_t channel = GetCurrentChannel();
     Ptr<SpectrumModel> disturbBand2 = Create<SpectrumModel>(allBands[channel - 1]);
-    Ptr<SpectrumModel> disturbBand4 = Create<SpectrumModel>(allBands[channel % 13 +1]);
-
+    Ptr<SpectrumModel> disturbBand4 = Create<SpectrumModel>(allBands[channel + 2]);
     interferingNode.Create(2); // 创建两个干扰节点
-
     // 对每个频率带设置功率谱密度
     Ptr<SpectrumValue> wgPsd2 = Create<SpectrumValue>(disturbBand2);
     *wgPsd2 = 0.000001 / 20e6;
     Ptr<SpectrumValue> wgPsd4 = Create<SpectrumValue>(disturbBand4);
     *wgPsd4 = 0.000002 / 20e6;
-
     WaveformGeneratorHelper waveformGeneratorHelper;
 
     // 设置通用属性
@@ -2009,11 +2040,9 @@ void CreateMultiToneInterference(){
     NetDeviceContainer waveformGeneratorDevices2 = waveformGeneratorHelper.Install(interferingNode.Get(0));
     waveformGeneratorHelper.SetTxPowerSpectralDensity(wgPsd4);
     NetDeviceContainer waveformGeneratorDevices4 = waveformGeneratorHelper.Install(interferingNode.Get(1));
-
     // 调度仿真事件来启动和停止波形生成器
     Time currentTime = Simulator::Now();
     Time newTime = currentTime + Seconds(15.0);
-
     ScheduleWaveformGeneratorEvents(waveformGeneratorDevices2, currentTime, newTime);
     ScheduleWaveformGeneratorEvents(waveformGeneratorDevices4, currentTime + Seconds(2), newTime + Seconds(2));
     Simulator::Schedule(Seconds(5), &ChangeAttribute, "electromagnetism", "多音干扰添加完成!");
@@ -2305,6 +2334,8 @@ int checkFolder(std::string folderPath){
     }
 }
 
+
+
 //切换一个功率
 void SetTxPower(Ptr<Node> node, double txPower) {
     Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0)); // 假设wifi设备是第一个设备
@@ -2380,12 +2411,12 @@ void checkNodeState(){
             }
 }
 
-// 监听网络状态
+// 优化
 void PrintNodeVector() {
     std::string folder = "/home/ns3/project/electric";
     int i = checkFolder(folder);
-    if(snrAverage < 18.0 || snrAverage == 0)zeroCount += 1;
-    if ((snrAverage < 18.0 || snrAverage == 0) && i && zeroCount > 10){
+    if(snrAverage < 18.0 || snrAverage == 0)zeroCount += 1; //检测到累计10次信噪比低状态
+    if ((snrAverage < 18.0 || snrAverage == 0) && i && zeroCount > 10){ //信噪比极低状态，调用电磁干扰识别并进行优化
         zeroCount = 0;
         cout << "检测到网络收到干扰，调用电磁优化"  << endl;
         cout << "当前网络信噪比为：" << snrAverage << endl;
@@ -2417,13 +2448,15 @@ void PrintNodeVector() {
         }else
         if (opt == 2){//多音干扰
             PowerUpAll(nodes);
+        }else
+        if (opt ==3){
+            vector<vector<int>> activityOpt = actOpt;
+            
         }
     }
     // 重新安排下一个输出
     Simulator::Schedule(Seconds(1.0), &PrintNodeVector);
 }
-
-
 
 //复制文件
 void CopyFile(string source, string destination){
@@ -2507,11 +2540,10 @@ void ModifyElectromagnetism(json jsonData) {
 }
 
 
-
 void ReceiveOutPacket (Ptr<Socket> socket){
     try{
         cout << "收到外部传参" << endl;
-        Ptr<Packet> packet = socket->Recv (8492,0);
+        Ptr<Packet> packet = socket->Recv (4096,0);
         uint8_t *buffer = new uint8_t[packet->GetSize ()-1];
         packet->CopyData(buffer, packet->GetSize ());
         string receiveData(reinterpret_cast<char*>(buffer), packet->GetSize());

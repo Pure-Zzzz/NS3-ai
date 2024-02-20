@@ -27,59 +27,45 @@ def extract_numbers(input_string, index):
     str = input_string[:index]
     return float(str)
 
+def convert_node_type(node_type):
+    node_types = {
+        '电台': 1,
+        '士兵': 2,
+        '坦克车': 3,
+        '雷达车': 4,
+        '运输车': 5,
+        '医疗车': 6,
+        '工程车': 7
+    }
+    return node_types.get(node_type, 8)
+
+def convert_mcs(mcs):
+    if 'Dsss' in mcs:
+        return 1
+    elif 'ERPOfdm' in mcs:
+        return 2
+    else:
+        return 3
+
 def pre_data():
     original_list = []
     try:
-        # 打开文件并读取 JSON 数据，使用 UTF-8 编码
         with open(json_file_path, 'r', encoding='utf-8') as file:
-            # 使用 json.load() 方法加载整个 JSON 文件
             data = json.load(file)
             if isinstance(data, (list, dict)):
-                # 迭代处理每个数据对象
                 for item in data:
                     item['dataNum'] = 1
-                    # 在这里进行你的处理逻辑，item 就是每个数据对象
-                    del item['Timestamp']
-                    del item['PkgType']
-                    del item['NodeGroup']
-                    del item['NodeName']
-                    del item['Position']
-                    del item['Terrain']
-                    del item['Weather']
-                    del item['frequency']
-                    if 'NodeType' in item:
-                        if item['NodeType'] == '电台':
-                            item['NodeType'] = 1
-                        elif item['NodeType'] == '士兵':
-                            item['NodeType'] = 2
-                        elif item['NodeType'] == '坦克车':
-                            item['NodeType'] = 3
-                        elif item['NodeType'] == '雷达车':
-                            item['NodeType'] = 4
-                        elif item['NodeType'] == '运输车':
-                            item['NodeType'] = 5
-                        elif item['NodeType'] == '医疗车':
-                            item['NodeType'] = 6
-                        elif item['NodeType'] == '工程车':
-                            item['NodeType'] = 7
-                        else:
-                            item['NodeType'] = 8
-                    if 'MCS' in item:
-                        if 'Dsss' in item['MCS']:
-                            item['key'] = 1
-                        elif 'ERPOfdm' in item['MCS']:
-                            item['key'] = 2
-                        else:
-                            item['key'] = 3
-                        item['MCS'] = extract_numbers_from_string(item['MCS'])
+                    del_keys = ['Timestamp', 'PkgType', 'NodeGroup', 'NodeName', 'Position', 'Terrain', 'Weather', 'frequency']
+                    for key in del_keys:
+                        item.pop(key, None)
+                    item['NodeType'] = convert_node_type(item.get('NodeType', ''))
+                    item['key'] = convert_mcs(item.get('MCS', ''))
+                    item['MCS'] = extract_numbers_from_string(item.get('MCS', ''))
                     item['NodeSpeed'] = float(item['NodeSpeed'])
                     item['NodeTxPower'] = float(item['NodeTxPower'])
                     item['NodeTP'] = float(item['NodeTP'])
                     item['SNR'] = float(item['SNR'])
-                    original_list = original_list + [item]
-                    # 如果你想将处理后的数据保存回文件，可以使用以下代码
-                    # with open('path/to/your/output_file.json', 'w', encoding='utf-8') as output_file:
-                    #     json.dump(data, output_file, indent=2, ensure_ascii=False)
+                    original_list.append(item)
             else:
                 print("JSON 数据不是列表或字典，无法迭代处理。")
     except json.decoder.JSONDecodeError as e:
@@ -156,32 +142,11 @@ def standardScaler():
     return normalized_data, unique_node_ids
 
 # 设置matplotlib支持中文的字体
-matplotlib.rcParams['font.sans-serif'] = ['SimHei']  # 指定默认字体为黑体
-matplotlib.rcParams['axes.unicode_minus'] = False  # 解决负号'-'显示为方块的问题
-cluster_indices = {}
-def perform_pca(data, n_components=None):
-    """
-    对数据执行PCA分析。
-    :param data: 数据集。
-    :param n_components: 要保留的主成分数量。
-    :return: PCA对象和转换后的数据。
-    """
-    pca = PCA(n_components=n_components)
-    transformed_data = pca.fit_transform(data)
-    return pca, transformed_data
+# matplotlib.rcParams['font.sans-serif'] = ['SimHei']  # 指定默认字体为黑体
+# matplotlib.rcParams['axes.unicode_minus'] = False  # 解决负号'-'显示为方块的问题
+plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei']
+plt.rcParams['axes.unicode_minus'] = False  # 确保负号显示正常
 
-def plot_pca_importance(pca):
-    """
-    绘制PCA特征重要性（成分方差比例）。
-    :param pca: PCA对象。
-    """
-    plt.figure(figsize=(10, 6))
-    plt.bar(range(1, len(pca.explained_variance_ratio_) + 1), pca.explained_variance_ratio_)
-    plt.ylabel('方差比例')
-    plt.xlabel('主成分')
-    plt.xticks(range(1, len(pca.explained_variance_ratio_) + 1))
-    plt.title('PCA特征重要性')
-    plt.show()
 
 def fuzzy_c_means_and_plot(data, cluster_number, max_iter=500, m=2.0, error=0.005):
     """
@@ -209,7 +174,8 @@ def fuzzy_c_means_and_plot(data, cluster_number, max_iter=500, m=2.0, error=0.00
                     [data[point_idx][1], cntr[cluster_idx][1]],
                     color=f'blue',
                     lw=u[cluster_idx][point_idx] * 2)  # 线宽与隶属度成比例
-    plt.savefig('useractivate.png')
+    plt.savefig('/home/ns3/project/optimize/useractivate.png')
+    plt.close()
     # plt.show()
     return cntr, u, u0, d, jm, p, fpc
 
@@ -237,25 +203,9 @@ def get_closest_samples(cluster_centers, labels, data):
         closest_samples.append(data[closest_sample_index])
     return closest_samples
 
-def analyze_clusters(data, dominant_clusters, cluster_number):
-    """
-    聚类结果分析：返回每个聚类的平均值和标准差
-    """
-    cluster_analysis = []
-
-    for cluster_idx in range(cluster_number):
-        # 获取属于当前聚类的样本
-        cluster_data = data[dominant_clusters == cluster_idx]
-
-        # 计算每个聚类的平均值和标准差
-        mean = np.mean(cluster_data, axis=0)
-        std_dev = np.std(cluster_data, axis=0)
-
-        cluster_analysis.append((mean, std_dev))
-
-    return cluster_analysis
-
 def execute_cluster_operations():
+    cluster_indices = {}
+    
     # 数据预处理
     data, id_list = standardScaler()
     # 执行聚类并绘制结果
@@ -265,10 +215,8 @@ def execute_cluster_operations():
     # 查找每个簇的中心节点
     closest_samples = get_closest_samples(cntr, dominant_clusters, data)
     print("每个簇最接近中心节点的样本：")
-    for i, sample in enumerate(closest_samples):
-        # print(f"簇 {i}: {sample}")
-        print("Cluster {}的中心节点为：{}".format(i, id_list[np.where(np.all(data == sample, axis=1))[0][0]]))
-    # 打印结果
+
+    # # 打印结果
     for i, cluster in enumerate(dominant_clusters):
         if cluster not in cluster_indices:
             cluster_indices[cluster] = []
@@ -276,37 +224,34 @@ def execute_cluster_operations():
     # 按照 cluster 排序的键值对列表
     sorted_clusters = sorted(cluster_indices.items(), key=lambda x: x[0])
 
-    # 输出排序后的结果
-    # for cluster, indices in sorted_clusters:
-    #     node_ids = [id_list[index] for index in indices]
-    #     print(f"Cluster {cluster} 对应的节点有: {node_ids}")
 
-    with open('output.txt', 'w', encoding='utf-8') as f:
+    with open('/home/ns3/project/optimize/output.txt', 'w', encoding='utf-8') as f:
         # 写入最近样本的结果
+        clusterCenterNode = []
+        clusterNodes = []
+        tmp = []
         for i, sample in enumerate(closest_samples):
             center_nodes = np.where(np.all(data == sample, axis=1))[0]
             print("Cluster {} 的中心节点为：{}".format(i, id_list[center_nodes[0]]))
             f.write("Cluster {} 的中心节点为：{}\n".format(i, id_list[center_nodes[0]]))
-
+            clusterCenterNode.append(center_nodes[0])
         f.write("\n")
 
         # 写入按 cluster 排序的结果
         sorted_clusters = sorted(cluster_indices.items(), key=lambda x: x[0])
         for cluster, indices in sorted_clusters:
             node_ids = [id_list[index] for index in indices]
+            for index in indices:
+                tmp.append(index)
+            clusterNodes.append(tmp)
+            tmp = []
             print(f"Cluster {cluster} 对应的节点有: {node_ids}")
-            f.write(f"Cluster {cluster} 对应的节点有: {node_ids}\n")
+            f.write(f"Cluster {cluster} 对应的节点有: \n{node_ids}\n")
+    with open('/home/ns3/project/optimize/output_opt.txt', 'w', encoding='utf-8') as f:
+        f.write('{}'.format(clusterCenterNode))
+        f.write('\n')
+        for a in clusterNodes:
+            f.write('{}\n'.format(a))
 
-    # # 获取聚类分析结果
-    # cluster_analysis = analyze_clusters(data, dominant_clusters, 5)
-    # # 打印每个聚类的统计特征
-    # for i, (mean, std_dev) in enumerate(cluster_analysis):
-    #     print(f"类别 {i}:")
-    #     print(f"平均值: {mean}")
-    #     print(f"标准差: {std_dev}")
-    # # 执行PCA
-    # pca, transformed_data = perform_pca(data)
-    # # 绘制PCA特征重要性
-    # plot_pca_importance(pca)
 if __name__=='__main__':
     execute_cluster_operations()
