@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import skfuzzy as fuzz
 import matplotlib.pyplot as plt
@@ -252,6 +253,15 @@ def execute_cluster_operations():
         f.write('\n')
         for a in clusterNodes:
             f.write('{}\n'.format(a))
+    command = "sshpass -p 123 scp /home/ns3/project/optimize/output.txt alex@192.168.56.100:/C:/test/bin_x64/plugins/com_proj_networksimvisualization/data/useractivity/useractivate.txt"
+    exit_code = os.system(command)
+    command = "sshpass -p 123 scp /home/ns3/project/optimize/useractivate.png alex@192.168.56.100:/C:/test/bin_x64/plugins/com_proj_networksimvisualization/data/useractivity/useractivate.png"
+    exit_code = os.system(command)
+    # 检查命令执行结果
+    if exit_code == 0:
+        print("替换活跃度命令执行成功！")
+    else:
+        print("命令活跃度失败！")
 
 if __name__=='__main__':
     execute_cluster_operations()

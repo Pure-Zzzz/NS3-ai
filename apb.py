@@ -20,25 +20,30 @@ from env_init.weather_pred import predict
 import subprocess
 from UserActionSort import execute_cluster_operations
 from env_init import elec_pred
-def delete_files_in_folder(path):
-    try:
-        print("python端：删除{}路径下文件".format(path))
-        subprocess.run('rm ' + path, shell=True, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Error: {e}")
 
 def write_opt(str):
     with open(optimize_path, 'a') as file:
         file.write(str+'\n')
-        print('写入信息到opt.txt:'+str)
+        print('写入信息到1.txt:'+str)
+    command = "sshpass -p 123 scp /home/ns3/project/optimize/1.txt alex@192.168.56.100:/C:/test/bin_x64/plugins/com_proj_networksimvisualization/data/optimize/1.txt"
+    exit_code = os.system(command)
+    # 检查命令执行结果
+    if exit_code == 0:
+        print("替换优化文字命令执行成功！")
+    else:
+        print("命令优化文字失败！")
 
 config_file_path = '/home/ns3/project/InitConfig.json'
+
+#读取初始化设置
 with open(config_file_path, 'r') as file:
     config_data = json.load(file)
 
 print("-----------------apb.py running-------------------")
 
-optimize_path = '/home/ns3/project/optimize/opt.txt'
+optimize_path = '/home/ns3/project/optimize/1.txt'
+
+# 预先保留的天气识别和地形识别的路径
 weather_path = ''
 terrain_path = ''
 
@@ -88,48 +93,59 @@ try:
         print("action: {}".format(action))
         print("current_channel: {}".format(current_channel))
 
-        if action==3:
+        if action == 3:
             #执行抗电磁
             #调用识别算法
             # elc_class = 'SNM'
             elec_type = elec_pred.predict("/home/ns3/project/electric/01.png")
             print("识别到干扰类型:  {}".format(elec_type))
             if elec_type == "CW":
-                #单音干扰，直接切换信道
+                #单音干扰，直接切换信道opt=10
                 print('单音干扰优化')
-                delete_files_in_folder("/home/ns3/project/electric/*")
                 msgInterface.PySendBegin()
-                msgInterface.GetPy2CppStruct().opt = 0
+                msgInterface.GetPy2CppStruct().opt = 10
                 msgInterface.PySendEnd()
                 msgInterface.PySendBegin()
                 next_channel = (current_channel+4)%13+1 #随机切换信道
                 msgInterface.GetPy2CppStruct().next_channel = next_channel
                 msgInterface.PySendEnd()
                 write_opt('time:{}----检测到单音干扰，调用电磁干扰优化策略：执行信道切换 {}信道---->{}信道'.format(time,current_channel,next_channel))
-            elif elec_type == "NBNJ" or elec_type == "NFM" or elec_type == "PBNJ" :
-                #部分频带噪声干扰--提高功率
+            elif elec_type == "PBNJ" :
+                #部分频带噪声干扰--提高功率opt=11
                 print('部分频带噪声干扰')
-                delete_files_in_folder("/home/ns3/project/electric/*")
                 msgInterface.PySendBegin()
-                msgInterface.GetPy2CppStruct().opt = 1 
+                msgInterface.GetPy2CppStruct().opt = 11
                 msgInterface.PySendEnd()                
-                write_opt('time:{}----检测到部分频带噪声干扰，调用电磁干扰优化策略：功率提升')
-            elif elec_type == "MTJ":
-                print('多音干扰优化')
-                delete_files_in_folder("/home/ns3/project/electric/*")
+                write_opt('time:{}----检测到部分频带噪声干扰，调用电磁干扰优化策略：功率提升'.format(time, elec_type))
+            elif elec_type == "NBNJ" or elec_type == "NFM":
+                #NFM噪声调频干扰--切换频段opt=12
                 msgInterface.PySendBegin()
-                msgInterface.GetPy2CppStruct().opt = 2
+                msgInterface.GetPy2CppStruct().opt = 12
+                msgInterface.PySendEnd()    
+                print('NFM噪声调频干扰--切换频段')
+                write_opt('time:{}----检测到噪声调频干扰干扰，调用电磁干扰优化策略：切换至5GHz频段'.format(time))
+            elif elec_type == "MTJ":
+                #MTJ噪声调频干扰--切换频段opt=13
+                print('多音干扰优化')
+                msgInterface.PySendBegin()
+                msgInterface.GetPy2CppStruct().opt = 13
                 msgInterface.PySendEnd()
                 msgInterface.PySendBegin()
                 next_channel = (current_channel+random.randint(2,12))%13+1 #随机切换信道
                 msgInterface.GetPy2CppStruct().next_channel = next_channel
                 msgInterface.PySendEnd()
                 write_opt('time:{}----检测到多音干扰，调用电磁干扰优化策略：执行信道切换 {}信道---->{}信道'.format(time,current_channel,next_channel))
-        elif action==4:
+        elif action == 4:
             try:
                 execute_cluster_operations()
             except Exception as e:
                 print("An error occurred while finding closest sample index:", str(e))
+        # elif action == 5:
+        #     #执行未知电磁抗干扰opt=14
+        #     msgInterface.PySendBegin()
+        #     msgInterface.GetPy2CppStruct().opt = 14
+        #     msgInterface.PySendEnd()
+
             # msgInterface.PySendBegin()
             # msgInterface.GetPy2CppStruct().opt = 2
             # msgInterface.PySendEnd()

@@ -46,6 +46,8 @@ double tpt = 0.0;
 double statInterval = 1;
 int stepcount = 0.0;
 int zeroCount = 0;
+int c1 = 0, c2 = 0, c3 = 0, c4 = 0, c5 = 0;
+double c1_p = 0.0, c2_p = 0.0, c3_p = 0.0, c4_p = 0.0, c5_p = 0.0;
 //数据库图片存放路径"/home/ns3/project/database"
 string database = "/home/ns3/project/database";
 //电磁图片存放路径"/home/ns3/project/electric"
@@ -180,51 +182,6 @@ struct DataForThpt{
     }
 } flowdata;
 
-// static void Throughput(){
-//     flowdata.monitor->CheckForLostPackets();
-//     const FlowMonitor::FlowStatsContainer stats = flowdata.monitor->GetFlowStats();
-//     uint64_t totalRxBytes = 0;
-//     uint32_t totalRxPackets = 0;
-//     double totalDelaySum = 0;
-//     for (FlowMonitor::FlowStatsContainerCI iter = stats.begin(); iter != stats.end(); iter++){
-//         totalRxBytes += iter->second.rxBytes;
-//         totalDelaySum += iter->second.delaySum.GetDouble();
-//         totalRxPackets += iter->second.rxPackets;
-//     }
-//     uint64_t rxBytesDiff = totalRxBytes - flowdata.totalRxBytes;
-//     uint32_t rxPacketsDiff = totalRxPackets - flowdata.totalRxPackets;
-//     double delayDiff = totalDelaySum - flowdata.totalDelaySum;
-//     flowdata.totalRxBytes = totalRxBytes;
-//     flowdata.totalRxPackets = totalRxPackets;
-//     flowdata.totalDelaySum = totalDelaySum;
-//     delay = 0.0; // ms
-//     if (rxPacketsDiff != 0 && delayDiff != 0){
-//         delay = delayDiff / rxPacketsDiff / 1000000;
-//         delay = round(delay * 100) / 100;
-//     }
-//     tpt = 8.0 * rxBytesDiff / statInterval / (1024 * 1024); // Mbps
-//     tpt = round(tpt * 100) / 100;
-//     // 创建 JSON 对象
-//     json jsonObj;
-//     // 添加 ArrangeType 到 JSON 对象
-//     jsonObj["ArrangeType"] = "avgNetwork";
-//     jsonObj["PkgType"] = "003";
-//     // 创建 Params 数组
-//     json paramsArray = json::array();
-//     // 创建 Params 数组中的嵌套 JSON 对象
-//     json nestedObj;
-    
-//     nestedObj["Delay"] = delay;
-//     nestedObj["SNRAverage"] = snrAverage;
-//     nestedObj["Throughput"] = tpt;
-//     // 将嵌套 JSON 对象添加到 Params 数组中
-//     paramsArray.push_back(nestedObj);
-//     // 将 Params 数组添加到主 JSON 对象中
-//     jsonObj["Params"] = paramsArray;
-//     cout << jsonObj << endl;
-//     stringQueue.push(jsonObj.dump());
-//     Simulator::Schedule(Seconds(statInterval), &Throughput);
-// }
 
 static void Throughput(){
     flowdata.monitor->CheckForLostPackets();
@@ -286,20 +243,6 @@ vector<uint16_t> InitialVector(){
     return transvector;
 }
 
-// 发送数据的函数
-// void SendData(Ptr<Socket> socket) {
-//     // 检查队列是否不为空
-//     if(!stringQueue.empty()){
-//         // cout << stringQueue.size() << endl;
-//         string toSend = stringQueue.front(); // 获取队列的第一个元素
-//         stringQueue.pop(); // 将该元素从队列中移除
-
-//         // 创建一个数据包并通过socket发送
-//         Ptr<Packet> packet = Create<Packet>((uint8_t*)toSend.c_str(), toSend.length());
-//         socket->Send(packet);
-//     }
-//     Simulator::Schedule(Seconds(0.001),&SendData,socket);
-// }
 
 void SendData(Ptr<Socket> socket) {
     // 检查队列是否不为空,先处理信噪比以及反馈信息
@@ -915,6 +858,16 @@ void ClearActivityFile(ofstream& outputFile, ofstream& inputFile) {
     inputFile.open("activity-data-log.json", std::ios::out | std::ios::app);
     outputFile << "[" << endl;
     actOpt = readDataFromFile("/home/ns3/project/optimize/output_opt.txt");
+    vector<vector<int>> activityOpt = actOpt;
+    c1 = actOpt[0][0];c2 = actOpt[0][1];c3 = actOpt[0][2];c4 = actOpt[0][3];c5 = actOpt[0][4];
+    c1_p = NodePower(nodes.Get(c1));c2_p = NodePower(nodes.Get(c2));
+    c3_p = NodePower(nodes.Get(c3));c4_p = NodePower(nodes.Get(c4));
+    c5_p = NodePower(nodes.Get(c5));
+    std::cout << "c1_p: " << c1_p << std::endl;
+    std::cout << "c2_p: " << c2_p << std::endl;
+    std::cout << "c3_p: " << c3_p << std::endl;
+    std::cout << "c4_p: " << c4_p << std::endl;
+    std::cout << "c5_p: " << c5_p << std::endl;
 
 
 }
@@ -1774,17 +1727,17 @@ void StartTransmit(NodeContainer Nodes, uint16_t port){
         cout << "节点数量少于2,无法发送数据包" <<endl;
     else{
         auto Select = SelectNodes(Nodes.GetN());
-        cout << "First Selection: ";
-        for (int i : Select.first)
-        {
-            cout << i << " ";
-        }
-        cout << "\nSecond Selection: ";
-        for (int i : Select.second)
-        {
-            cout << i << " ";
-        }
-        cout<< endl;
+        // cout << "First Selection: ";
+        // for (int i : Select.first)
+        // {
+        //     cout << i << " ";
+        // }
+        // cout << "\nSecond Selection: ";
+        // for (int i : Select.second)
+        // {
+        //     cout << i << " ";
+        // }
+        // cout<< endl;
         for (int i : Select.first)
         {
             for (int j : Select.second)
@@ -2134,8 +2087,8 @@ void CreatePartialBandNoiseJamming() {
     // 创建噪声调频干扰节点
     Ptr<SpectrumValue> wgPsd = Create<SpectrumValue>(spectrumModel);
     Ptr<UniformRandomVariable> randVar = CreateObject<UniformRandomVariable>();
-    randVar->SetAttribute("Min", DoubleValue(1e-10 / 20e6)); //可使全局信噪比降至16左右
-    randVar->SetAttribute("Max", DoubleValue(1.5e-10 / 20e6)); // 调整最大值根据需要
+    randVar->SetAttribute("Min", DoubleValue(1.4e-10 / 20e6)); //可使全局信噪比降至16左右
+    randVar->SetAttribute("Max", DoubleValue(1.8e-10 / 20e6)); // 调整最大值根据需要
     *wgPsd = randVar->GetValue();
 
     WaveformGeneratorHelper waveformGeneratorHelper;
@@ -2221,42 +2174,6 @@ string RemoveOf(const string& input) {
     return output; 
 }
 
-// void ModifyNetwork(json jsonData) {
-//     int intervaltime = 0;
-//     for (const auto& param : jsonData["Params"]) {
-//         cout << "进行网络参数修改" << endl;
-//         auto antennasCount = to_string(param["AntennasCount"]);
-//         auto channel = RemoveOf(to_string(param["Channel"]));
-//         auto encode = RemoveOf(to_string(param["Encode"]));
-//         auto encodeRate = RemoveOf(to_string(param["EncodeRate"]));
-//         auto maxReceivingSpace = to_string(param["MaxReceivingSpace"]);
-//         auto maxTransmissionRate = RemoveOf(to_string(param["MaxTransmissionRate"]));
-//         auto maxTransmissionSpace = to_string(param["MaxTransmissionSpace"]);
-//         auto nodeID = RemoveOf(to_string(param["NodeID"]));
-//         auto power = to_string(param["Power"]);
-//         auto rxGain = to_string(param["ReceivingGain"]);
-//         auto txGain = to_string(param["TransmissionGain"]);
-//         vector<string> data;
-//         data.push_back(nodeID);
-//         data.push_back(antennasCount);
-//         data.push_back(rxGain);
-//         data.push_back(txGain);
-//         data.push_back(maxTransmissionSpace);
-//         data.push_back(maxReceivingSpace);
-//         data.push_back(channel);
-//         data.push_back(power);
-//         double nowtime = Simulator::Now().GetSeconds();//记录调用时间
-//         int number = static_cast<int>(jsonData["Params"].size());
-//         if (isBusy(nowtime)) {
-//             cout << fmod(nowtime, 60.0) << "当前时间不支持修改，请稍后再试！" << endl;
-//         } else {
-//             Simulator::Schedule(MilliSeconds(1+10*intervaltime), &ConfigureWifiPhyAttributes, data, intervaltime, number);
-//             intervaltime++;
-//             Simulator::Schedule(MilliSeconds(1+10*intervaltime), &ConfigureEncoding, nodeID, encode, encodeRate, maxTransmissionRate);
-//             Simulator::Schedule(MilliSeconds(30*number + 100), &ChangeAttribute, "network", nodeID + "的网络可编排参数修改完成！");
-//         }
-//     }
-// }
 
 void ModifyNetwork(json jsonData) {
     int intervaltime = 0;
@@ -2299,9 +2216,21 @@ void ModifyNetwork(json jsonData) {
 //简单版切换信道
 void simpleChangeChannel(Ptr<WifiPhy> spectrumPhy, uint16_t channelId) {
 if(!spectrumPhy->IsStateSwitching()){
-    cout << "正在切换信道至----> "<< channelId << endl;
-    spectrumPhy->SetAttribute("ChannelSettings",StringValue(string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}"))); // 设置新的频道号
+    if(channelId < 36){
+        cout << "正在切换信道至----> "<< channelId << endl;
+        spectrumPhy->SetAttribute("ChannelSettings",StringValue(string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}"))); // 设置新的频道号
+    } else {
+        cout << "正在切换信道至5GHz信道----> "<< 149 << endl;
+        spectrumPhy->SetAttribute("ChannelSettings",StringValue(string("{" + std::to_string(149) +", 20, BAND_5GHZ, 0}"))); // 设置新的频道号
+    }
+    // cout << "正在切换信道至----> "<< channelId << endl;
+    // spectrumPhy->SetAttribute("ChannelSettings",StringValue(string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}"))); // 设置新的频道号
 }
+// if(channelId < 36){
+//                 spectrumPhy->SetAttribute("ChannelSettings",StringValue(string("{" + std::to_string(channelId) +", 20, BAND_2_4GHZ, 0}"))); // 设置新的频道号
+//             } else {
+//                 spectrumPhy->SetAttribute("ChannelSettings",StringValue(string("{" + std::to_string(149) +", 20, BAND_5GHZ, 0}"))); // 设置新的频道号
+//             }
 }
 
 //切换所有信道
@@ -2334,8 +2263,6 @@ int checkFolder(std::string folderPath){
     }
 }
 
-
-
 //切换一个功率
 void SetTxPower(Ptr<Node> node, double txPower) {
     Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice>(node->GetDevice(0)); // 假设wifi设备是第一个设备
@@ -2343,7 +2270,6 @@ void SetTxPower(Ptr<Node> node, double txPower) {
     phy->SetTxPowerStart(txPower);
     phy->SetTxPowerEnd(txPower);
 }
-
 
 //切换所有功率
 void PowerUpAll(NodeContainer nodes){
@@ -2377,19 +2303,6 @@ void changeAllMCS(NodeContainer nodes, string dataRate){
 
 }
 
-
-// void deleteFilesInFolder(const std::string& folderPath) {
-//     // 遍历文件夹
-//     for (const auto& entry : fs::directory_iterator(folderPath)) {
-//         // 判断当前条目是否为文件
-//         if (entry.is_regular_file()) {
-//             // 删除文件
-//             fs::remove(entry.path());
-//             std::cout << "Deleted file: " << entry.path() << std::endl;
-//         }
-//     }
-// }
-
 void StartSet(){
     msgInterface->CppRecvBegin();
     opt = msgInterface->GetPy2CppStruct()->opt;
@@ -2420,6 +2333,7 @@ void PrintNodeVector() {
         zeroCount = 0;
         cout << "检测到网络收到干扰，调用电磁优化"  << endl;
         cout << "当前网络信噪比为：" << snrAverage << endl;
+
         msgInterface->CppSendBegin();
         msgInterface->GetCpp2PyStruct()->action = 3;//action-3表示调用电磁优化
         msgInterface->GetCpp2PyStruct()->current_channel = GetCurrentChannel();//获取当前信道
@@ -2430,29 +2344,45 @@ void PrintNodeVector() {
         opt = msgInterface->GetPy2CppStruct()->opt;
         msgInterface->CppRecvEnd();
         cout << "CPP：收到python策略："<< opt << endl;
-        if (opt == 0){//单音干扰
+        if (opt == 10){//单音干扰
             msgInterface->CppRecvBegin();
             next_channel = msgInterface->GetPy2CppStruct()->next_channel;
             msgInterface->CppRecvEnd();
-            // deleteFilesInFolder(folder);
             if(next_channel != GetCurrentChannel()){changeAllChannel(nodes, next_channel);}
             cout << "CPP：执行单音干扰信道切换完成"<< endl;
         }else
-        if (opt == 1){//部分频带噪声干扰,噪声调频干扰,梳状谱干扰
+        if (opt == 11){//部分频带噪声干扰
             PowerUpAll(nodes);
+        }else
+        if (opt == 13){//多音干扰
             msgInterface->CppRecvBegin();
             next_channel = msgInterface->GetPy2CppStruct()->next_channel;
             msgInterface->CppRecvEnd();
-            // deleteFilesInFolder(folder);
+            PowerUpAll(nodes);
             if(next_channel != GetCurrentChannel()){changeAllChannel(nodes, next_channel);}
         }else
-        if (opt == 2){//多音干扰
-            PowerUpAll(nodes);
+        if (opt == 12){//NFM噪声调频干扰--切换频段
+            if(next_channel != GetCurrentChannel()){changeAllChannel(nodes, 149);}
         }else
-        if (opt ==3){
-            vector<vector<int>> activityOpt = actOpt;
-            
+        if (opt == 14){//未知电磁干扰对抗
+
         }
+        
+        
+        // //活跃度的东西
+        // vector<vector<int>> activityOpt = actOpt;
+        // c1 = actOpt[0][0];c2 = actOpt[0][1];c3 = actOpt[0][2];c4 = actOpt[0][3];c5 = actOpt[0][4];
+        // c1_p = NodePower(nodes.Get(c1));c2_p = NodePower(nodes.Get(c2));
+        // c3_p = NodePower(nodes.Get(c3));c4_p = NodePower(nodes.Get(c4));
+        // c5_p = NodePower(nodes.Get(c5));
+        // std::cout << "c1_p: " << c1_p << std::endl;
+        // std::cout << "c2_p: " << c2_p << std::endl;
+        // std::cout << "c3_p: " << c3_p << std::endl;
+        // std::cout << "c4_p: " << c4_p << std::endl;
+        // std::cout << "c5_p: " << c5_p << std::endl;
+
+// 继续赋值其他变量...
+
     }
     // 重新安排下一个输出
     Simulator::Schedule(Seconds(1.0), &PrintNodeVector);
@@ -2471,37 +2401,6 @@ void CopyFile(string source, string destination){
     }
 }
 
-// void ModifyElectromagnetism(json jsonData) {
-//     for (const auto& param : jsonData["Params"]){
-//         string interfereType = RemoveOf(to_string(param["InterfereType"]));
-//         double nowtime = Simulator::Now().GetSeconds();
-//         if (isBusy(nowtime)) {
-//             cout << fmod(nowtime, 60.0) << "当前时间不支持修改，请稍后再试！" << endl;
-//         } else {
-//             if (interfereType=="CSNJ") {
-//                 CreateCombSpectrumInterference();
-//                 Simulator::Schedule(Seconds(1), &CopyFile, database+"/elec/"+interfereType+"/01/01.png", electric);
-//                 cout << "梳状谱噪声干扰添加成功" << endl;
-//             } else if (interfereType=="CW") {
-//                 CreateSingleToneInterference();
-//                 Simulator::Schedule(Seconds(1), &CopyFile, database+"/elec/"+interfereType+"/01/01.png", electric);
-//                 cout << "单音干扰添加成功" << endl;
-//             } else if (interfereType=="MTJ") {
-//                 CreateMultiToneInterference();
-//                 Simulator::Schedule(Seconds(1), &CopyFile, database+"/elec/"+interfereType+"/01/01.png", electric);
-//                 cout << "多音干扰添加成功" << endl;
-//             } else if (interfereType=="PBNJ") {
-//                 CreatePartialBandNoiseJamming();
-//                 Simulator::Schedule(Seconds(1), &CopyFile, database+"/elec/"+interfereType+"/01/01.png", electric);
-//                 cout << "部分频带噪声干扰" << endl;
-//             } else if (interfereType=="NFM") {
-//                 CreateNoiseFrequencyJamming();
-//                 Simulator::Schedule(Seconds(1), &CopyFile, database+"/elec/"+interfereType+"/01/01.png", electric);
-//                 cout << "噪声调频类干扰添加成功" << endl;
-//             }
-//         }
-//     }
-// }
 void ModifyElectromagnetism(json jsonData) {
     for (const auto& param : jsonData["Params"]){
         string interfereType = RemoveOf(to_string(param["InterfereType"]));

@@ -26,6 +26,9 @@
 
 namespace py = pybind11;
 
+/// @brief 
+/// @param  
+/// @param  
 PYBIND11_MODULE(ns3ai_apb_py_stru, m)
 {
     py::class_<EnvStruct>(m, "PyEnvStruct")
