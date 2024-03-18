@@ -97,7 +97,6 @@ def process(terrain_path, weather_path):
 # #-----------------------
 
 #     # 加载灰度图
-
 #     # 定义灰度值到地形的映射关系
 #     gray_to_terrain = {
 #         0: '_background_',
@@ -107,29 +106,21 @@ def process(terrain_path, weather_path):
 #         4: 'rural',
 #         5: 'forest',
 #     }
-
 #     # 创建保存地形信息的列表
 #     terrain_info_list = []
-
 #     # 遍历每个匹配项，获取对应坐标的灰度值，并映射为地形
 #     for match in matches:
 #         id_, x, y = match
 #         x, y = int(x), int(y)  # 坐标可能是字符串，确保转为整数
-
 #         # 获取灰度值
 #         gray_value = gray_img[x, y]
-
 #         # 映射为地形
 #         terrain = gray_to_terrain.get(gray_value, 'Unknown')
-
 #         # 保存地形信息到列表
-#         terrain_info_list.append(f'{id_},{terrain},{id_weather_dict[id_]}')
-        
+#         terrain_info_list.append(f'{id_},{terrain},{id_weather_dict[id_]}')  
 #     # 将地形信息保存到文件
 #     with open('terrain_info1.txt', 'w') as file:
 #         file.write('\n'.join(terrain_info_list))
-
-#     print("Terrain information saved to 'terrain_info.txt'")
-
+#     print("Terrain information saved to 'terrain_info.txt'"
 #     print("任务完成！")
 

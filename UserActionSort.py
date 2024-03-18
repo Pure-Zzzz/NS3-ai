@@ -36,7 +36,7 @@ def convert_node_type(node_type):
         '雷达车': 4,
         '运输车': 5,
         '医疗车': 6,
-        '工程车': 7
+        '彩虹无人机': 7
     }
     return node_types.get(node_type, 8)
 
@@ -56,7 +56,7 @@ def pre_data():
             if isinstance(data, (list, dict)):
                 for item in data:
                     item['dataNum'] = 1
-                    del_keys = ['Timestamp', 'PkgType', 'NodeGroup', 'NodeName', 'Position', 'Terrain', 'Weather', 'frequency']
+                    del_keys = ['Timestamp', 'PkgType', 'NodeGroup', 'NodeName', 'Position', 'Terrain', 'Weather']
                     for key in del_keys:
                         item.pop(key, None)
                     item['NodeType'] = convert_node_type(item.get('NodeType', ''))
@@ -66,6 +66,8 @@ def pre_data():
                     item['NodeTxPower'] = float(item['NodeTxPower'])
                     item['NodeTP'] = float(item['NodeTP'])
                     item['SNR'] = float(item['SNR'])
+                    item['Energy'] = float(item['Energy'].strip("%"))
+                    item['frequency'] = int(item['frequency'])
                     original_list.append(item)
             else:
                 print("JSON 数据不是列表或字典，无法迭代处理。")
@@ -112,7 +114,10 @@ def standardScaler():
                 if key == 'NodeSpeed':
                     # 如果属性值是可加的（例如数字），则将其相加，否则连接字符串
                     merged_dict[current_id][key] = merged_dict[current_id].get(key, 0) + value
-
+                if key == 'Energy':
+                    merged_dict[current_id][key] = merged_dict[current_id].get(key, 0) + value
+                if key == 'frequency':
+                    merged_dict[current_id][key] = merged_dict[current_id].get(key, 0) + value
         # 如果'id'属性不在merged_dict中，添加新的字典项
         else:
             merged_dict[current_id] = dict(item)
@@ -122,7 +127,7 @@ def standardScaler():
     merged_list = list(merged_dict.values())
     # print('长度为=',len(merged_list))
     key_number = len(merged_list)
-    vector = zeros((key_number, 7))
+    vector = zeros((key_number, 9))
     i = 0
     # vector=[id,Nodepower,SNR,MCS,DataNum]
     for key in merged_list:
@@ -133,7 +138,9 @@ def standardScaler():
         vector[i][3] = round(key['NodeTP'], 2)
         vector[i][4] = round(key['SNR'] / num, 2)
         vector[i][5] = round(key['MCS'] / num, 2)
-        vector[i][6] = num
+        vector[i][6] = round(key['Energy'] / num, 2)
+        vector[i][7] = round(key['frequency'] / num, 2)
+        vector[i][8] = num
         i = i + 1
     from sklearn.preprocessing import StandardScaler
 
@@ -150,51 +157,40 @@ plt.rcParams['axes.unicode_minus'] = False  # 确保负号显示正常
 
 
 def fuzzy_c_means_and_plot(data, cluster_number, max_iter=500, m=2.0, error=0.005):
-    """
-        Fuzzy C-Means Clustering Algorithm
-        :param data: 数据集，形状为 N x M（N个样本，M个特征）
-        :param cluster_number: 聚类数目
-        :param max_iter: 最大迭代次数
-        :param m: 模糊度指数，默认为2
-        :param error: 收敛误差阈值
-        :return: cntr: 聚类中心, u: 隶属度矩阵, u0: 初始隶属度矩阵, d: 距离矩阵, jm: 目标函数值, p: 迭代次数, fpc: Fuzzy Partition Coefficient
-    """
     cntr, u, u0, d, jm, p, fpc = fuzz.cluster.cmeans(data.T, cluster_number, m, error, max_iter)
     fig, ax = plt.subplots()
-    ax.set_title('节点活跃度聚类')
+    ax.set_title('节点活跃度聚类', color='white')
     # 绘制原始数据点
     for j in range(cluster_number):
-        ax.plot(data[:, 0], data[:, 1], 'o', color='gray', markersize=5)
+        ax.plot(data[:, 0], data[:, 1], 'o', color=(0.5,0.5,1), markersize=5)
     # 绘制聚类中心
     for pt in cntr:
-        ax.plot(pt[0], pt[1], 'rs')
+        # ax.plot(pt[0], pt[1], 'rs')
+        ax.plot(pt[0], pt[1], 'ws')
+
     # 绘制隶属度等级
     for point_idx in range(len(data)):
         for cluster_idx in range(cluster_number):
             ax.plot([data[point_idx][0], cntr[cluster_idx][0]],
                     [data[point_idx][1], cntr[cluster_idx][1]],
-                    color=f'blue',
+                    # color=f'blue',
+                    color = (1, 1, 0, 0.5),
                     lw=u[cluster_idx][point_idx] * 2)  # 线宽与隶属度成比例
-    plt.savefig('/home/ns3/project/optimize/useractivate.png')
+    # plt.savefig('/home/ns3/project/optimize/useractivate.png')
+    # plt.close()
+    r, g, b = 33 / 255, 36 / 255, 41 / 255
+    color = (r, g, b)
+    plt.gca().set_facecolor(color=color)
+    plt.axis('off')
+    plt.savefig('/home/ns3/project/optimize/useractivate.png',bbox_inches='tight',facecolor=color, edgecolor=color)
     plt.close()
     # plt.show()
     return cntr, u, u0, d, jm, p, fpc
 
 def find_dominant_clusters(u):
-    """
-    根据隶属度矩阵确定每个样本最可能属于的类别。
-    :param u: 隶属度矩阵
-    :return: 最可能的类别列表
-    """
     return np.argmax(u, axis=0)
 
 def get_closest_samples(cluster_centers, labels, data):
-    """
-    查找每个簇的最接近中心节点的样本
-    :cluster_centers : 中心节点
-    :labels: 每个样本最可能的所属的簇
-    :data: 所有参与聚类的样本
-    """
     closest_samples = []
     for cluster_id in range(len(cluster_centers)):
         cluster_indices = np.where(labels == cluster_id)[0]
@@ -233,7 +229,7 @@ def execute_cluster_operations():
         tmp = []
         for i, sample in enumerate(closest_samples):
             center_nodes = np.where(np.all(data == sample, axis=1))[0]
-            print("Cluster {} 的中心节点为：{}".format(i, id_list[center_nodes[0]]))
+            # print("Cluster {} 的中心节点为：{}".format(i, id_list[center_nodes[0]]))
             f.write("Cluster {} 的中心节点为：{}\n".format(i, id_list[center_nodes[0]]))
             clusterCenterNode.append(center_nodes[0])
         f.write("\n")
@@ -246,7 +242,7 @@ def execute_cluster_operations():
                 tmp.append(index)
             clusterNodes.append(tmp)
             tmp = []
-            print(f"Cluster {cluster} 对应的节点有: {node_ids}")
+            # print(f"Cluster {cluster} 对应的节点有: {node_ids}")
             f.write(f"Cluster {cluster} 对应的节点有: \n{node_ids}\n")
     with open('/home/ns3/project/optimize/output_opt.txt', 'w', encoding='utf-8') as f:
         f.write('{}'.format(clusterCenterNode))

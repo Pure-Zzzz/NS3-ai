@@ -1,3 +1,6 @@
-from env_init.weather_pred import predict
-weather = predict('/home/ns3/ns-allinone-3.40/ns-3.40/contrib/ai/examples/a-plus-b/use-msg-stru/env_init/all/rainy/rain1.jpg')
-print(weather)
+from channel_power.train import MyRLEnvironment
+nb_episode = 1000
+my_rl_env = MyRLEnvironment(nb_episode=nb_episode)
+my_rl_env.train()
+agent = my_rl_env.get_agent_instance()
+print(agent.act()[0])

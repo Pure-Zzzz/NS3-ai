@@ -1,10 +1,6 @@
 import numpy as np
 
 class WoLFAgent():
-    """
-        Policy hill-climbing algorithm(PHC)
-        http://www.cs.cmu.edu/~mmv/papers/01ijcai-mike.pdf
-    """
     def __init__(self, alpha=0.1, delta=0.0001, actions=None, high_delta=0.004, low_delta=0.002):
         self.alpha = alpha
         self.actions = actions  
@@ -29,22 +25,6 @@ class WoLFAgent():
         self.last_action_id = action_id
         action = self.actions[action_id]
         return action
-    # def act(self, q_values=None):
-    # # 根据某些条件选择动作，这里仅作为示例
-    # if q_values is not None:
-    #     action_id = np.argmax(q_values)
-    # else:
-    #     # 如果没有提供 Q 值，你可以根据其他策略来选择动作
-    #     # 这里仅作为示例，你可能需要根据你的问题来更改条件
-    #     if some_condition:
-    #         action_id = 0
-    #     else:
-    #         action_id = 1
-
-    # self.last_action_id = action_id
-    # action = self.actions[action_id]
-    # return action
-
 
     def observe(self, reward):
         self.reward_history.append(reward)
