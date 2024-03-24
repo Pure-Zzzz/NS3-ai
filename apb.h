@@ -9,7 +9,7 @@ struct EnvStruct
     uint32_t current_disturbed_channel=0;//当前干扰信道
     uint32_t id;//
     uint32_t delay;//总延时
-    uint32_t tput;//总吞吐量
+    
     float snr;//总信噪比
     uint8_t terrain;//当前场景地形
     uint8_t weather;//当前场景天气
@@ -25,6 +25,7 @@ struct ActStruct
     uint32_t next_power;//下一功率
     uint32_t next_mcs;//下一mcs
     uint8_t opt;
+    uint32_t autoOpt;//
 };
 
 

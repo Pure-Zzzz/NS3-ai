@@ -107,7 +107,8 @@ struct NodeData {
     }
 };
 vector<NodeData> nodeVector;
-
+json satelliteRecv;
+json satelliteSend;
 //socket
 Ptr<Socket> srcSocket;
 queue<string> stringQueue;
@@ -190,11 +191,13 @@ struct DataRecord {
 vector<DataRecord> dataRecords;
 uint64_t totalReceivedBytes = 0;
 uint64_t accumulatedTime = 15000;
+uint32_t autoOpt = 0;
 //记录吞吐量
 static map<string, uint64_t> throughoutputByModelId;
 
-NodeContainer nodes,group1,group2,group3,midPoint,sendNode,recvNode,interferingNode;//初始化节点
+NodeContainer nodes,group1,group2,group3,midPoint,sendNode,recvNode,interferingNode,utUsers,gwUsers;//初始化节点
 
+Ptr<SatHelper> helper;
 uint32_t packetId = 0;
 Time totalDelay = Seconds(0);
 double totalPacketsReceived = 0;
@@ -1033,7 +1036,7 @@ void NodesAddMovement(MobilityHelper &mobility){
         stringstream speedValue;
         speedValue << "ns3::ConstantRandomVariable[Constant=" << nodeSpeed << "]";
         mobility.SetMobilityModel("ns3::RandomWalk2dMobilityModel",
-                        "Bounds", RectangleValue(Rectangle(-70000,-55000,245000,260000)),
+                        "Bounds", RectangleValue(Rectangle(-700000,550000,-2450000,2600000)),
                         "Mode", StringValue("Time"),
                         "Time", TimeValue(Seconds(time)),
                         "Speed", StringValue(speedValue.str()));
@@ -1802,6 +1805,7 @@ int weatherType(string Weather){
     return weather;
 }
 
+
 void ChangeAttribute(string type, string sentence){
     if(type == "network"){
         if(!changechannel)
@@ -1818,6 +1822,18 @@ void ChangeAttribute(string type, string sentence){
         // stringQueue.push(jsonString);
         outQueue.push(jsonString);
     } else if (type == "electromagnetism"){
+        stringstream ss;
+        ss << "{";  // 开始一个 JSON 对象
+        // 添加各种数据到 JSON 对象
+        ss << "\"PkgType\": \"004\",";
+        ss << "\"ArrangeType\": \"" << type << "\", ";
+        ss << "\"Message\": \"" << sentence << "\"";
+        ss << "}";  // 结束 JSON 对象        
+        string jsonString = ss.str();  // 将 stringstream 转换为 string
+        cout << jsonString << endl;
+        // stringQueue.push(jsonString);
+        outQueue.push(jsonString);
+    } else if (type == "optimization") {
         stringstream ss;
         ss << "{";  // 开始一个 JSON 对象
         // 添加各种数据到 JSON 对象
@@ -1938,6 +1954,14 @@ void ModifyEnergyModelValues(WifiRadioEnergyModelHelper& radioEnergyHelper, doub
     NetDeviceContainer deviceContainer = nodeDevices[i]; // 使用对应的NetDeviceContainer
     DeviceEnergyModelContainer deviceModels = radioEnergyHelper.Install(deviceContainer.Get(0), energySourceContainer.Get(i)); // 安装能量模型
   }
+  radioEnergyHelper.Set("TxCurrentA", DoubleValue(0.0001));
+  radioEnergyHelper.Set("RxCurrentA", DoubleValue(0.0001));
+  radioEnergyHelper.Set("IdleCurrentA", DoubleValue(0.0001));
+  for (uint32_t i = 0; i < nodes.GetN(); ++i) {
+    Ptr<Node> node = nodes.Get(i);
+    NetDeviceContainer deviceContainer = nodeDevices[i]; // 使用对应的NetDeviceContainer
+    DeviceEnergyModelContainer deviceModels = radioEnergyHelper.Install(deviceContainer.Get(0), energySourceContainer.Get(i)); // 安装能量模型
+  }
 }
 void ConfigureEncoding(string modelId,string encode,string encodeRate,string maxTransmissonRate){
     double nowtime = Simulator::Now().GetSeconds();
@@ -2009,7 +2033,7 @@ void CreateSingleToneInterference(){
     Time currentTime = Simulator::Now();
 
     // 在当前仿真时间上加上15秒
-    Time newTime = currentTime + Seconds(60.0);
+    Time newTime = currentTime + Seconds(200.0);
 
     ScheduleWaveformGeneratorEvents(waveformGeneratorDevices, currentTime, newTime); 
     Simulator::Schedule(Seconds(0.1), &ChangeAttribute, "electromagnetism", "单音干扰添加成功!");
@@ -2042,7 +2066,7 @@ void CreateMultiToneInterference(){
     NetDeviceContainer waveformGeneratorDevices4 = waveformGeneratorHelper.Install(interferingNode.Get(1));
     // 调度仿真事件来启动和停止波形生成器
     Time currentTime = Simulator::Now();
-    Time newTime = currentTime + Seconds(15.0);
+    Time newTime = currentTime + Seconds(200.0);
     ScheduleWaveformGeneratorEvents(waveformGeneratorDevices2, currentTime, newTime);
     ScheduleWaveformGeneratorEvents(waveformGeneratorDevices4, currentTime + Seconds(2), newTime + Seconds(2));
     Simulator::Schedule(Seconds(5), &ChangeAttribute, "electromagnetism", "多音干扰添加完成!");
@@ -2103,7 +2127,7 @@ void CreateCombSpectrumInterference(){
 
     // 调度仿真事件来启动和停止波形生成器
     Time currentTime = Simulator::Now();
-    Time newTime = currentTime + Seconds(15.0);
+    Time newTime = currentTime + Seconds(200.0);
 
     ScheduleWaveformGeneratorEvents(waveformGeneratorDevices3, currentTime, newTime);
     ScheduleWaveformGeneratorEvents(waveformGeneratorDevices4, currentTime + Seconds(1), newTime + Seconds(1));
@@ -2148,7 +2172,7 @@ void CreatePartialBandNoiseJamming() {
 
     // 调度仿真事件来启动和停止波形生成器
     Time currentTime = Simulator::Now();
-    Time newTime = currentTime + Seconds(60.0);
+    Time newTime = currentTime + Seconds(200.0);
 
     ScheduleWaveformGeneratorEvents(waveformGeneratorDevices, currentTime, newTime);
     Simulator::Schedule(Seconds(3), &ChangeAttribute, "electromagnetism", "部分频带噪声干扰添加完成!");
@@ -2203,7 +2227,7 @@ void CreateNoiseFrequencyJamming() {
     
     // 调度仿真事件来启动和停止波形生成器
     Time currentTime = Simulator::Now();
-    Time newTime = currentTime + Seconds(15.0);
+    Time newTime = currentTime + Seconds(200.0);
     ScheduleWaveformGeneratorEvents(waveformGeneratorDevices1, currentTime, newTime);
     ScheduleWaveformGeneratorEvents(waveformGeneratorDevices2, currentTime, newTime);
     ScheduleWaveformGeneratorEvents(waveformGeneratorDevices3, currentTime, newTime);
@@ -2349,6 +2373,10 @@ void changeAllMCS(NodeContainer nodes, string dataRate){
 }
 
 void StartSet(){
+    msgInterface->CppRecvBegin();
+    autoOpt = msgInterface->GetPy2CppStruct()->autoOpt;
+    msgInterface->CppRecvEnd();
+    if (autoOpt){
     msgInterface->CppSendBegin();
     msgInterface->GetCpp2PyStruct()->time = Simulator::Now().GetSeconds();//获取当前仿真事件
     msgInterface->CppSendEnd();
@@ -2362,6 +2390,9 @@ void StartSet(){
     if (opt == 4){//信号质量优先
         Simulator::Schedule(Seconds(50), &PowerUpAll, nodes);
     }
+}else{
+    cout << "启动手动优化" <<endl;
+}
 }
 void MultiGroup() {
     for (NodeContainer::Iterator i = nodes.Begin(); i != nodes.End(); ++i) {
@@ -2370,23 +2401,58 @@ void MultiGroup() {
         
         // 提取编号，这假设id是'-'后的数字
         size_t dashPos = nodeId.find('-');
-        if (dashPos != string::npos) {
-            int id = stoi(nodeId.substr(dashPos + 1));
-            
-            // 根据编号对3取余来分组
-            switch (id % 3) {
-                case 0:
-                    group3.Add(node);
-                    break;
-                case 1:
-                    group1.Add(node);
-                    break;
-                case 2:
-                    group2.Add(node);
-                    break;
+        string kind = nodeId.substr(0,dashPos);
+        if (kind == "soldier" || kind == "medicalvehicle" || kind == "truck") {
+            if (dashPos != string::npos) {
+                int id = stoi(nodeId.substr(dashPos + 1));
+                // 根据编号对3取余来分组
+                switch (id % 3) {
+                    case 0:
+                        group3.Add(node);
+                        break;
+                    case 1:
+                        group1.Add(node);
+                        break;
+                    case 2:
+                        group2.Add(node);
+                        break;
+                }
+            } 
+        }else if (kind == "uav" || kind == "radarvehicle") {
+            if (dashPos != string::npos) {
+                int id = stoi(nodeId.substr(dashPos + 1));
+                // 根据编号对3取余来分组
+                switch (id % 3) {
+                    case 0:
+                        group2.Add(node);
+                        break;
+                    case 1:
+                        group3.Add(node);
+                        break;
+                    case 2:
+                        group1.Add(node);
+                        break;
+                }
+            } 
+        }else if (kind == "tank" || kind == "station") {
+            if (dashPos != string::npos) {
+                int id = stoi(nodeId.substr(dashPos + 1));
+                // 根据编号对3取余来分组
+                switch (id % 3) {
+                    case 0:
+                        group1.Add(node);
+                        break;
+                    case 1:
+                        group2.Add(node);
+                        break;
+                    case 2:
+                        group3.Add(node);
+                        break;
+                }
             }
         }
     }
+
 }
 
 void InitialChannel() {
@@ -2407,18 +2473,147 @@ void InitialChannel() {
     }
 }
 
-void SatTxCallback (Ptr<const Packet> packet) {
-    cout << sendNode.Get(0)->GetObject<Ipv4>()->GetAddress(1, 0).GetLocal() << "Packet sent: " << packet->GetSize() << " to satllite" << endl;
+
+
+string SubtractTimestamps(const string& timestamp1, const string& timestamp2) {
+    // 将字符串转换为 long long 类型
+    long long startTimestamp, arriveTimestamp;
+    istringstream(timestamp1) >> arriveTimestamp;
+    istringstream(timestamp2) >> startTimestamp;    
+
+    // 计算差值
+    long long duration = arriveTimestamp - startTimestamp;
+
+    // 将差值转换为字符串
+    std::ostringstream ss;
+    ss << duration;
+    return ss.str();    
 }
 
+string AddTimestamps(const string& timestamp1, const string& timestamp2) {
+    // 将字符串转换为 long long 类型
+    long long startTimestamp, arriveTimestamp;
+    istringstream(timestamp1) >> arriveTimestamp;
+    istringstream(timestamp2) >> startTimestamp;    
+    
+    // 计算差值
+    long long duration = arriveTimestamp + startTimestamp;
+
+    // 将差值转换为字符串
+    std::ostringstream ss;
+    ss << duration;
+    return ss.str();    
+}
+
+//记录地面节点发送数据给卫星
+void SatTxCallback (Ptr<const Packet> packet) {
+    auto now = chrono::system_clock::now();
+    long long startTimestamp = chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()).count(); 
+    string startNodeId =FindIdFromMap(sendNode.Get(0));
+    string startNodeType = nameToTypeMap[Names::FindName(sendNode.Get(0))];
+    string targetNodeId = "satellite-1";
+    string targetNodeType = "卫星";
+    string nodeGroup = "red";
+    string dataSize;
+    string mediaType;
+    string dataRate;
+    if (packet->GetSize()==512) {
+        dataSize = "512";
+        mediaType = "文本";
+        dataRate = "128kbps";
+    } else if (packet->GetSize()==1024) {
+        dataSize = "1024";
+        mediaType = "图片";
+        dataRate = "256kbps";
+    } else if (packet->GetSize()==2048) {
+        dataSize = "2048";
+        mediaType = "音频";
+        dataRate = "512kbps";
+    } else if (packet->GetSize()==4096) {
+        dataSize = "4096";
+        mediaType = "视频";
+        dataRate = "1024kbps";
+    }
+
+    satelliteRecv["StartTimestamp"]=to_string(startTimestamp)+"ms";
+    satelliteRecv["PkgType"]= "002";
+    satelliteRecv["StartNodeid"] = startNodeId;
+    satelliteRecv["StartNodeGroup"] = nodeGroup;
+    satelliteRecv["StartNodeType"] = startNodeType;
+    satelliteRecv["TargetNodeid"] = targetNodeId;
+    satelliteRecv["TargetNodeGroup"] = nodeGroup;
+    satelliteRecv["TargetNodeType"] = targetNodeType;
+    satelliteRecv["DataSize"] = dataSize;
+    satelliteRecv["MediaType"] = mediaType;
+    satelliteRecv["frequency"] = "";
+    satelliteRecv["SNR"] = "";
+    satelliteRecv["MCS"] = "";
+    satelliteRecv["Delay"] = "";
+    satelliteRecv["DataRate"] = dataRate;
+}
+
+//记录卫星发送数据给地面节点
 void SatRxCallback(Ptr<const Packet> packet, const Address& from) {
-    // InetSocketAddress fromAddr = InetSocketAddress::ConvertFrom(from);
-    // 获取卫星的地址
-    // Ipv4Address ipv4Addr = fromAddr.GetIpv4();
-    cout << FindIdFromMap(recvNode.Get(0)) << endl;
-    cout << FindIdFromMap(recvNode.Get(0)) << "Received packet size: "
-    << packet->GetSize() << " bytes from satllite, sent from IP:"
-    << FindIdFromMap(sendNode.Get(0)) << endl;
+    // 记录发送开始时间
+    auto now = chrono::system_clock::now();
+    long long startTimestamp = chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()).count(); 
+    satelliteRecv["ArriveTimestamp"]=to_string(startTimestamp)+"ms";
+    // 将 JSON 对象转换为字符串
+    string jsonString1 = satelliteRecv.dump();
+    cout << jsonString1 << endl;
+    stringQueue.push(jsonString1);
+
+    string duration = SubtractTimestamps(satelliteRecv["ArriveTimestamp"], satelliteRecv["StartTimestamp"]);
+
+    string startNodeId = "satellite-1";
+    string nodeGroup = "red";
+    string startNodeType = "卫星";
+    string targetNodeId = FindIdFromMap(recvNode.Get(0));
+    string targetNodeType = nameToTypeMap[Names::FindName(recvNode.Get(0))];
+    string dataSize;
+    string mediaType;
+    string dataRate;
+    if (packet->GetSize()==512) {
+        dataSize = "512";
+        mediaType = "文本";
+        dataRate = "128kbps";
+    } else if (packet->GetSize()==1024) {
+        dataSize = "1024";
+        mediaType = "图片";
+        dataRate = "256kbps";
+    } else if (packet->GetSize()==2048) {
+        dataSize = "2048";
+        mediaType = "音频";
+        dataRate = "512kbps";
+    } else if (packet->GetSize()==4096) {
+        dataSize = "4096";
+        mediaType = "视频";
+        dataRate = "1024kbps";
+    }
+
+    satelliteSend["StartTimestamp"]=to_string(startTimestamp)+"ms";
+    satelliteSend["ArriveTimestamp"]=AddTimestamps(to_string(startTimestamp), duration)+"ms";
+    satelliteSend["PkgType"]= "002";
+    satelliteSend["StartNodeid"] = startNodeId;
+    satelliteSend["StartNodeGroup"] = nodeGroup;
+    satelliteSend["StartNodeType"] = startNodeType;
+    satelliteSend["TargetNodeid"] = targetNodeId;
+    satelliteSend["TargetNodeGroup"] = nodeGroup;
+    satelliteSend["TargetNodeType"] = targetNodeType;
+    satelliteSend["DataSize"] = dataSize;
+    satelliteSend["MediaType"] = mediaType;
+    satelliteSend["frequency"] = "";
+    satelliteSend["SNR"] = "";
+    satelliteSend["MCS"] = "";
+    satelliteSend["Delay"] = "";
+    satelliteSend["DataRate"] = dataRate;
+
+    // 将 JSON 对象转换为字符串
+    string jsonString2 = satelliteSend.dump();
+    stringQueue.push(jsonString2);
+
+    // 输出 JSON 字符串
+    cout << jsonString2 << endl;
 }
 
 void SatCommunication(Ptr<SatHelper> helper, NodeContainer utUsers, NodeContainer gwUsers) {
@@ -2428,11 +2623,29 @@ void SatCommunication(Ptr<SatHelper> helper, NodeContainer utUsers, NodeContaine
     CbrHelper cbrHelper("ns3::UdpSocketFactory",
                     InetSocketAddress(helper->GetUserAddress(utUsers.Get(0)), satPort));
 
+    MediaType mediaType = GenerateRandomMediaType();
+    string mediaTypeString = MediaTypeToString(mediaType);//视频，文本，录音，未知类型
+    // string mediaTypeString = "视频";
+    if (mediaTypeString=="文本" || mediaTypeString=="未知类型"){
+        cbrHelper.SetAttribute("PacketSize", UintegerValue(512));
+    } else if (mediaTypeString=="图片"){
+        cbrHelper.SetAttribute("PacketSize", UintegerValue(1024));
+    } else if (mediaTypeString=="录音"){
+        cbrHelper.SetAttribute("PacketSize", UintegerValue(2048));
+    } 
+    // else if (mediaTypeString=="视频"){
+    //     cbrHelper.SetAttribute("PacketSize", UintegerValue(4096));
+    // }
+
     // install CBR to send packets to UT
     ApplicationContainer gwCbr = cbrHelper.Install(gwUsers.Get(0));
     sendNode = nodes.Get(0);
     gwCbr.Start(Seconds(1.0));
     gwCbr.Stop(Seconds(5.1));
+
+    // 为 gwCbr 设置回调
+    Ptr<Application> app = gwCbr.Get(0);
+    app->TraceConnectWithoutContext("Tx", MakeCallback(&SatTxCallback));
 
     // create applications on UT user
     sinkHelper.SetAttribute(
@@ -2444,9 +2657,9 @@ void SatCommunication(Ptr<SatHelper> helper, NodeContainer utUsers, NodeContaine
 
     // install sink to receive packets from GW
     ApplicationContainer utSink = sinkHelper.Install(utUsers.Get(0));
-    recvNode = nodes.Get(1);
+    recvNode = nodes.Get(10);
     utSink.Start(Seconds(1.0));
-    utSink.Stop(Seconds(5.0));
+    utSink.Stop(Seconds(10.0));
 
     // 连接修改后的回调函数
     Ptr<PacketSink> sinkApp = DynamicCast<PacketSink>(utSink.Get(0));
@@ -2458,14 +2671,12 @@ void InstallSatellite() {
     simulationHelper->SetUtCountPerBeam(1);
     simulationHelper->SetUserCountPerUt(1);
     simulationHelper->SetBeams("48");
-    simulationHelper->SetGwUserCount(1);
-    Ptr<SatHelper> helper = simulationHelper->CreateSatScenario();
-    NodeContainer utUsers = nodes.Get(0);
-    NodeContainer gwUsers = nodes.Get(1);
+    simulationHelper->SetGwUserCount(512);
+    helper = simulationHelper->CreateSatScenario();
+    utUsers = nodes.Get(0);
+    gwUsers = nodes.Get(10);
     utUsers = helper->GetUtUsers();
     gwUsers = helper->GetGwUsers();
-
-    Simulator::Schedule(Seconds(4.1), &SatCommunication, helper, utUsers, gwUsers);
 }
 
 // 优化
@@ -2473,7 +2684,7 @@ void PrintNodeVector() {
     std::string folder = "/home/ns3/project/electric";
     int i = checkFolder(folder);
     if(snrAverage < 18.0 || snrAverage == 0)zeroCount += 1; //检测到累计10次信噪比低状态
-    if ((snrAverage < 18.0 || snrAverage == 0) && i && zeroCount > 5){ //信噪比极低状态，调用电磁干扰识别并进行优化
+    if ((snrAverage < 18.0 || snrAverage == 0) && i && zeroCount > 5 && autoOpt){ //信噪比极低状态，调用电磁干扰识别并进行优化
         zeroCount = 0;
         cout << "检测到网络收到干扰，调用电磁优化"  << endl;
         cout << "当前网络信噪比为：" << snrAverage << endl;
@@ -2517,17 +2728,6 @@ void PrintNodeVector() {
             if(next_channel != GetCurrentChannel()){changeAllChannel(nodes, next_channel);}
             if(nextpower == 0){PowerUpAll(nodes);}else{PowerDownAll(nodes);}
         }
-        // else
-        // if (opt == 15){//卫星
-        //     InstallSatellite();
-        // }else
-        // if (opt == 16){//频谱
-        //     InitialChannel();
-        // }else
-        // if (opt == 17){//能量
-        // // 在模拟器中设置回调函数，在3秒后调用 ModifyEnergyModelValues 函数
-        //     ModifyEnergyModelValues(radioEnergyHelper, 20.6, 5.6, 0.6);
-        // }
     }
     // 重新安排下一个输出
     Simulator::Schedule(Seconds(1.0), &PrintNodeVector);
@@ -2595,15 +2795,16 @@ void ConductOptimization(json jsonData) {
         msgInterface->CppSendBegin();
         msgInterface->GetCpp2PyStruct()->id = 1;
         msgInterface->CppSendEnd();
-        Simulator::Schedule(MilliSeconds(100), &ChangeAttribute, "optimization", "可靠通信优化添加成功");
-        Simulator::Schedule(Seconds(50), &changeAllMCS, nodes, "HtMcs7");
+        Simulator::Schedule(MilliSeconds(100), &ChangeAttribute, "optimization", "通信质量优先策略");
+        
+        Simulator::Schedule(Seconds(50), &PowerUpAll, nodes);
         break;
     case 2:
         msgInterface->CppSendBegin();
         msgInterface->GetCpp2PyStruct()->id = 2;
         msgInterface->CppSendEnd();
-        Simulator::Schedule(MilliSeconds(100), &ChangeAttribute, "optimization", "高速通信优化添加成功");
-        Simulator::Schedule(Seconds(50), &PowerUpAll, nodes);
+        Simulator::Schedule(MilliSeconds(100), &ChangeAttribute, "optimization", "通信速率优先策略");
+        Simulator::Schedule(Seconds(50), &changeAllMCS, nodes, "HtMcs7");
         break;
     case 3:
         msgInterface->CppSendBegin();
@@ -2612,7 +2813,7 @@ void ConductOptimization(json jsonData) {
         msgInterface->CppRecvBegin();
         next_channel = msgInterface->GetPy2CppStruct()->next_channel;
         msgInterface->CppRecvEnd();
-        Simulator::Schedule(MilliSeconds(100), &ChangeAttribute, "optimization", "单音干扰优化添加成功");
+        Simulator::Schedule(MilliSeconds(100), &ChangeAttribute, "optimization", "单音频抗干扰通信方案");
         if(next_channel != GetCurrentChannel()){changeAllChannel(nodes, next_channel);};
         break;
     case 4:
@@ -2623,7 +2824,7 @@ void ConductOptimization(json jsonData) {
         next_channel = msgInterface->GetPy2CppStruct()->next_channel;
         msgInterface->CppRecvEnd();
         PowerUpAll(nodes);
-        Simulator::Schedule(MilliSeconds(100), &ChangeAttribute, "optimization", "多音干扰优化添加成功");
+        Simulator::Schedule(MilliSeconds(100), &ChangeAttribute, "optimization", "多频干扰抵御通信方案");
         if(next_channel != GetCurrentChannel()){changeAllChannel(nodes, next_channel);}
         break;
     case 5:
@@ -2631,14 +2832,14 @@ void ConductOptimization(json jsonData) {
         msgInterface->GetCpp2PyStruct()->id = 5;
         msgInterface->CppSendEnd();
         PowerUpAll(nodes);
-        Simulator::Schedule(MilliSeconds(100), &ChangeAttribute, "optimization", "部分频带噪声干扰优化添加成功");
+        Simulator::Schedule(MilliSeconds(100), &ChangeAttribute, "optimization", "部分频带噪声干扰抑制策略");
         break;
     case 6:
         msgInterface->CppSendBegin();
         msgInterface->GetCpp2PyStruct()->id = 6;
         msgInterface->CppSendEnd();
         if(next_channel != GetCurrentChannel()){changeAllChannel(nodes, 149);}
-        Simulator::Schedule(MilliSeconds(100), &ChangeAttribute, "optimization", "梳状谱干扰/噪声调频干扰优化添加成功");
+        Simulator::Schedule(MilliSeconds(100), &ChangeAttribute, "optimization", "梳状谱及噪声调频干扰抵御方案");
         break;
     case 7:
         msgInterface->CppSendBegin();
@@ -2659,15 +2860,15 @@ void ConductOptimization(json jsonData) {
         msgInterface->CppSendBegin();
         msgInterface->GetCpp2PyStruct()->id = 8;
         msgInterface->CppSendEnd();
-        InstallSatellite();
-        Simulator::Schedule(MilliSeconds(100), &ChangeAttribute, "optimization", "调用卫星添加成功");
+        Simulator::Schedule(Seconds(0.1), &SatCommunication, helper, utUsers, gwUsers);
+        Simulator::Schedule(MilliSeconds(100), &ChangeAttribute, "optimization", "应急卫星通信备用策略");
         break;
     case 9:
         msgInterface->CppSendBegin();
         msgInterface->GetCpp2PyStruct()->id = 9;
         msgInterface->CppSendEnd();
         InitialChannel();
-        Simulator::Schedule(MilliSeconds(100), &ChangeAttribute, "optimization", "频谱管理优化添加成功");
+        Simulator::Schedule(MilliSeconds(100), &ChangeAttribute, "optimization", "频谱资源优化管理");
         break;
     case 10:
         msgInterface->CppSendBegin();
@@ -2675,7 +2876,7 @@ void ConductOptimization(json jsonData) {
         msgInterface->CppSendEnd();
         PowerDownAll(nodes);
         ModifyEnergyModelValues(radioEnergyHelper, -3, -0.8, -0.6);
-        Simulator::Schedule(MilliSeconds(100), &ChangeAttribute, "optimization", "能量管理优化添加成功");
+        Simulator::Schedule(MilliSeconds(100), &ChangeAttribute, "optimization", "能源优化管理策略添加成功");
         break;
     default:
         Simulator::Schedule(MilliSeconds(100), &ChangeAttribute, "optimization", "不添加优化");
@@ -2948,7 +3149,7 @@ int main (int argc, char *argv[])
 
     //建立映射表
     FindIdFromIpMap(nodes);
-
+    InstallSatellite();
     //所有节点分组group
     MultiGroup();
 

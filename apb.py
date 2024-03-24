@@ -39,11 +39,13 @@ print("-----------------apb.py running-------------------")
 # 预先保留的天气识别和地形识别的路径
 weather_path = ''
 terrain_path = ''
-
+AutomaticOptimization = config_data['AutomaticOptimization']
 weather = config_data['Weather']
 terrain = config_data['Terrain']
 if terrain == 'upland':
     terrain = 'mountain'
+if AutomaticOptimization == False:
+    autoOpt = 0
 ################################################################################################
 agent = DeepQAgent()
 ################################################################################################
@@ -71,17 +73,22 @@ weather_map = {
     "plain": "平原",
     "forest": "森林"
 }
-msgInterface.PyRecvBegin()
-time = msgInterface.GetCpp2PyStruct().time
-msgInterface.PyRecvEnd()
+msgInterface.PySendBegin()
+msgInterface.GetPy2CppStruct().autoOpt = 1 if AutomaticOptimization else 0
+msgInterface.PySendEnd()
+if AutomaticOptimization:
+    msgInterface.PyRecvBegin()
+    time = msgInterface.GetCpp2PyStruct().time
+    msgInterface.PyRecvEnd()
+
 
 #优化——环境——2
-if weather == 'sunny' and terrain == 'plain':
+if weather == 'sunny' and terrain == 'plain' and AutomaticOptimization:
     msgInterface.PySendBegin()
     msgInterface.GetPy2CppStruct().opt = 3 #速度优先
     msgInterface.PySendEnd()
     write_opt('time:{}----通信环境为{}下的{},调整传输策略为高速传输策略'.format(time, weather_map[weather], weather_map[terrain]))
-else:
+elif AutomaticOptimization:
     msgInterface.PySendBegin()
     msgInterface.GetPy2CppStruct().opt = 4 #信号优先
     msgInterface.PySendEnd()
@@ -105,30 +112,33 @@ try:
 #优化——电磁——5种
         #执行抗电磁
         #调用识别算法
-        if action == 1:#手动
+        if action == 1 and not AutomaticOptimization:#手动
             msgInterface.PyRecvBegin()
             id = msgInterface.GetCpp2PyStruct().id
+            time = msgInterface.GetCpp2PyStruct().time
             msgInterface.PyRecvEnd()
             if id == 1:
                 print('id=1')
+                write_opt('time:{}----通信质量优先策略添加成功'.format(time))
             if id == 2:
                 print('id=2')
+                write_opt('time:{}----通信速率优先策略添加成功'.format(time))
             if id == 3:
                 next_channel = (current_channel+4)%13+1 #向后切换信道
                 msgInterface.PySendBegin()
                 msgInterface.GetPy2CppStruct().next_channel = next_channel
                 msgInterface.PySendEnd()
-                write_opt('time:{}----调用单音干扰电磁干扰优化策略：执行信道切换 {}信道---->{}信道'.format(time,current_channel,next_channel))
+                write_opt('time:{}----调用单音频抗干扰通信方案：执行信道切换 {}信道---->{}信道'.format(time,current_channel,next_channel))
             if id == 4:
                 msgInterface.PySendBegin()
                 next_channel = (current_channel+random.randint(0,12))%13+1 #随机切换信道
                 msgInterface.GetPy2CppStruct().next_channel = next_channel
                 msgInterface.PySendEnd()
-                write_opt('time:{}----调用多音干扰电磁干扰优化策略：执行信道切换 {}信道---->{}信道; 执行功率提升'.format(time,current_channel,next_channel))
+                write_opt('time:{}----调用多频干扰抵御通信方案：执行信道切换 {}信道---->{}信道; 执行功率提升'.format(time,current_channel,next_channel))
             if id == 5:
-                write_opt('time:{}----检测到部分频带噪声干扰，调用电磁干扰优化策略：功率提升'.format(time, elec_type))
+                write_opt('time:{}----调用电部分频带噪声干扰抑制策略策略：功率提升'.format(time))
             if id == 6:
-                write_opt('time:{}----调用电磁干扰优化策略：切换至5GHz频段'.format(time, elec_type))
+                write_opt('time:{}----调用梳状谱及噪声调频干扰抵御方案：切换至5GHz频段'.format(time))
             if id == 7:
                 RLaction = agent.act()
                 next_channel = RLaction[0]
@@ -148,12 +158,13 @@ try:
                 if try_count > 5:
                     continue
             if id == 8:
-                write_opt('time:{}----调用卫星优化')
+                write_opt('time:{}----应急卫星通信备用策略'.format(time))
             if id == 9:
-                write_opt('time:{}----调用频谱管理优化')
+                write_opt('time:{}----调用频谱资源优化管理'.format(time))
             if id == 10:
-                write_opt('time:{}----调用能量管理优化')
-        if action == 3:
+                write_opt('time:{}----调用能源优化管理策略'.format(time))
+        if action == 3 and AutomaticOptimization:
+            print('不执行自动优化')
             elec_type = elec_pred.predict("/home/ns3/project/electric/01.png")
             os.system('sshpass -p 123 scp /home/ns3/project/optimize/elec/{}.png alex@192.168.56.100:/C:/test/bin_x64/plugins/com_proj_networksimvisualization/data/identify/elect.png'.format(elec_type))
             print("识别到干扰类型:  {}".format(elec_type))
@@ -231,49 +242,9 @@ try:
         elif action == 7:
             continue
 
-        # elif action == 5:
-        #     #执行未知电磁抗干扰opt=14
-        #     msgInterface.PySendBegin()
-        #     msgInterface.GetPy2CppStruct().opt = 14
-        #     msgInterface.PySendEnd()
 
-            # msgInterface.PySendBegin()
-            # msgInterface.GetPy2CppStruct().opt = 2
-            # msgInterface.PySendEnd()
-            #执行活跃度调整
 
         
-        
-        {
-        # snr = msgInterface.GetCpp2PyStruct().snr
-        # delay = msgInterface.GetCpp2PyStruct().delay
-        # tput = msgInterface.GetCpp2PyStruct().tput
-        # current_power = msgInterface.GetCpp2PyStruct().current_power
-        # nodetype = msgInterface.GetCpp2PyStruct().nodetype
-        # mcs = msgInterface.GetCpp2PyStruct().mcs
-        # msgInterface.PyRecvEnd()
-        # obs = [snr, delay, tput]
-        # power_ch = whichpower(nodetype)
-        # index = power_ch.index(current_power)
-        # act = agent.get_action(obs)
-        # if act[0]==1 and index+1<len(power_ch):
-        #     index+=1
-        # elif act[0]==0 and index!=0:
-        #     index-=1
-        # else:
-        #     index
-        # if act[1]==1 and mcs!=7 and mcs!=-1:
-        #     mcs+=1
-        # elif act[1]==0 and mcs!=0 and mcs!=-1:
-        #     mcs-=1
-        # else:
-        #     mcs
-        # send to C++ side
-        # msgInterface.PySendBegin()
-        # msgInterface.GetPy2CppStruct().next_power = power_ch[index]
-        # msgInterface.GetPy2CppStruct().next_mcs = mcs
-        # msgInterface.PySendEnd()}
-        }
 
 except Exception as e:
     exc_type, exc_value, exc_traceback = sys.exc_info()
